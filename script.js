@@ -54,11 +54,44 @@ document.addEventListener('DOMContentLoaded', function () {
         headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listWeek' },
         height: 'auto',
         events: function (info, successCallback, failureCallback) {
+            // Helper to process and merge empty days
+            const processEvents = (realEvents) => {
+                const events = [...realEvents];
+
+                // Only generate empty days if we are in a List view (or generally, to support list view)
+                // We'll generate them for the requested range.
+                let current = new Date(info.start);
+                const end = new Date(info.end);
+
+                // create a lookup for days that have jobs
+                const daysWithJobs = new Set();
+                events.forEach(e => {
+                    const start = new Date(e.start);
+                    daysWithJobs.add(start.toDateString());
+                });
+
+                while (current < end) {
+                    // Check if this day has a job
+                    // Note: This simple check assumes jobs are single-day. 
+                    // For multi-day, we'd need more complex overlap logic, but for lawn care, single day is safe assumption.
+                    if (!daysWithJobs.has(current.toDateString())) {
+                        events.push({
+                            title: 'No Jobs',
+                            start: new Date(current), // Copy date
+                            allDay: true,
+                            classNames: ['job-empty-day'] // CSS will hide this in Month view
+                        });
+                    }
+                    current.setDate(current.getDate() + 1);
+                }
+                successCallback(events);
+            };
+
             if (!supabase) {
                 // Fallback for demo/testing without keys
                 console.warn('Supabase not configured. Using local dummy data.');
                 const localJobs = JSON.parse(localStorage.getItem('jls_local_jobs')) || [];
-                successCallback(localJobs);
+                processEvents(localJobs);
                 return;
             }
 
@@ -70,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         failureCallback(error);
                     } else {
                         // Map Supabase data to FullCalendar event objects
-                        const events = data.map(job => ({
+                        const mappedEvents = data.map(job => ({
                             id: job.id,
                             title: job.title,
                             start: job.start_time, // Assuming 'start_time' column
@@ -79,11 +112,14 @@ document.addEventListener('DOMContentLoaded', function () {
                             status: job.status,
                             classNames: getEventClassNames(job.job_type, job.status)
                         }));
-                        successCallback(events);
+                        processEvents(mappedEvents);
                     }
                 });
         },
         eventClick: function (info) {
+            info.jsEvent.preventDefault(); // Prevent URL navigation
+            // Don't open details for "Empty Day" placeholders
+            if (info.event.classNames.includes('job-empty-day')) return;
             openJobDetails(info.event);
         },
         windowResize: function (view) {

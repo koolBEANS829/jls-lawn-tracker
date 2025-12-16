@@ -87,33 +87,36 @@
                         <button class="btn-save" onclick="saveJob()">SCHEDULE JOB</button>
                     </div>
                 </div>
-                <!-- Job Details Modal -->
-                <div id="job-details-modal" class="wizard-overlay hidden">
-                    <div class="wizard-card">
-                        <div class="wizard-header">
-                            <span id="view-job-close" class="close-btn">&times;</span>
-                            <h2 id="view-job-title">Job Details</h2>
-                        </div>
+            </div> <!-- Close wizard-card -->
+        </div> <!-- Close wizard-overlay -->
 
-                        <div class="job-details-content">
-                            <div id="view-job-type-badge" class="job-type-badge">MOWING</div>
+        <!-- Job Details Modal -->
+        <div id="job-details-modal" class="wizard-overlay hidden">
+            <div class="wizard-card">
+                <div class="wizard-header">
+                    <span id="view-job-close" class="close-btn">&times;</span>
+                    <h2 id="view-job-title">Job Details</h2>
+                </div>
 
-                            <div class="detail-row">
-                                <strong>When:</strong>
-                                <span id="view-job-date">...</span>
-                            </div>
+                <div class="job-details-content">
+                    <div id="view-job-type-badge" class="job-type-badge">MOWING</div>
 
-                            <div class="detail-row">
-                                <strong>Notes:</strong>
-                                <p id="view-job-notes" class="notes-box">No notes.</p>
-                            </div>
-                        </div>
-                        <div class="wizard-actions right-align">
-                            <button id="btn-mark-done" class="btn-complete" onclick="markJobAsDone()">MARK AS
-                                DONE</button>
-                        </div>
+                    <div class="detail-row">
+                        <strong>When:</strong>
+                        <span id="view-job-date">...</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <strong>Notes:</strong>
+                        <p id="view-job-notes" class="notes-box">No notes.</p>
                     </div>
                 </div>
+                <div class="wizard-actions right-align">
+                    <button id="btn-mark-done" class="btn-complete" onclick="markJobAsDone()">MARK AS
+                        DONE</button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- App Logic -->
