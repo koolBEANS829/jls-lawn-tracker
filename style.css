@@ -455,3 +455,45 @@ textarea:focus {
 .btn-big-type:active {
     transform: scale(0.98);
 }
+
+/* --- SMS Actions --- */
+.sms-actions {
+    display: flex;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.btn-sms {
+    flex: 1;
+    padding: 0.75rem;
+    text-align: center;
+    text-decoration: none;
+    font-weight: 700;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: transform 0.1s;
+}
+
+.btn-sms:active {
+    transform: scale(0.95);
+}
+
+.btn-sms.remind {
+    background-color: #2196F3;
+    /* Blue */
+    color: white;
+}
+
+.btn-sms.thanks {
+    background-color: #4CAF50;
+    /* Green */
+    color: white;
+}
+
+.hidden {
+    display: none !important;
+}

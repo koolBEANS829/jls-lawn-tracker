@@ -110,6 +110,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             type: job.job_type,    // Assuming 'job_type' column
                             notes: job.notes,
                             status: job.status,
+                            price: job.price,      // New dedicated column
+                            address: job.address,  // New dedicated column
                             classNames: getEventClassNames(job.job_type, job.status)
                         }));
                         processEvents(mappedEvents);
@@ -164,6 +166,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.saveJob = async function () {
         const client = document.getElementById('wizard-client').value;
+        const phone = document.getElementById('wizard-phone').value;
+        const address = document.getElementById('wizard-address').value;
         const priceVal = document.getElementById('wizard-price').value;
         const dateVal = document.getElementById('wizard-date').value;
         const notes = document.getElementById('wizard-notes').value;
@@ -173,10 +177,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!dateVal) { alert('Please pick a date!'); return; }
 
         let eventTitle = client;
-        // Append price if exists
-        if (priceVal) {
-            eventTitle += ` ($${priceVal})`;
-        }
+        // Legacy: We NO LONGER append price to title for new jobs
+        // if (priceVal) { eventTitle += ` ($${priceVal})`; }
 
         let displayType = selectedType === 'mowing' ? 'Mowing' : 'Hedge Trimming';
         if (!eventTitle.toLowerCase().includes(displayType.toLowerCase())) {
@@ -188,6 +190,9 @@ document.addEventListener('DOMContentLoaded', function () {
             start_time: dateVal, // DB column: start_time
             job_type: selectedType, // DB column: job_type
             notes: notes,
+            price: priceVal || null, // DB column: price
+            address: address, // DB column: address
+            client_phone: phone, // New field, assuming DB column 'client_phone' or 'phone' exists or ignored if not
             status: 'pending'
         };
 
@@ -208,7 +213,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 start: newJob.start_time,
                 type: newJob.job_type,
                 notes: newJob.notes,
+                phone: newJob.client_phone,
                 status: newJob.status,
+                price: newJob.price,
+                address: newJob.address,
                 classNames: newJob.classNames
             };
 
@@ -231,6 +239,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const dateStr = dateObj ? (dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : 'No date';
         document.getElementById('view-job-date').innerText = dateStr;
 
+        // Address Logic
+        const addressEl = document.getElementById('view-job-address');
+        const address = event.extendedProps.address;
+        if (address) {
+            addressEl.innerHTML = `<a href="https://maps.google.com/?q=${encodeURIComponent(address)}" target="_blank">${address}</a>`;
+        } else {
+            addressEl.innerText = '--';
+        }
+
         const typeEl = document.getElementById('view-job-type-badge');
         const type = event.extendedProps.type;
         typeEl.innerText = type === 'mowing' ? 'MOWING' : 'HEDGE TRIMMING';
@@ -239,14 +256,47 @@ document.addEventListener('DOMContentLoaded', function () {
         const notes = event.extendedProps.notes || 'No notes.';
         document.getElementById('view-job-notes').innerText = notes;
 
-        // Parse Price from Title if present e.g. " ($50)"
-        const priceMatch = event.title.match(/\(\$(\d+(?:\.\d{2})?)\)/);
-        const priceVal = priceMatch ? priceMatch[1] : null;
+        // Price Logic: Check dedicated column first, then fallback to Title Regex
         const priceEl = document.getElementById('view-job-price');
+        let priceVal = event.extendedProps.price;
+
+        if (!priceVal) {
+            // BACKWARD COMPATIBILITY: Check title for ($50)
+            const priceMatch = event.title.match(/\(\$(\d+(?:\.\d{2})?)\)/);
+            priceVal = priceMatch ? priceMatch[1] : null;
+        }
+
         if (priceVal) {
             priceEl.innerText = '$' + priceVal;
         } else {
             priceEl.innerText = '--';
+        }
+
+        // Phone & SMS Buttons
+        const phone = event.extendedProps.phone || ''; // FullCalendar puts extra props here
+        const phoneRow = document.getElementById('view-job-phone-row');
+        const phoneEl = document.getElementById('view-job-phone');
+        const smsContainer = document.querySelector('.sms-actions');
+        const btnRemind = document.getElementById('btn-sms-remind');
+        const btnThanks = document.getElementById('btn-sms-thanks');
+
+        if (phone) {
+            phoneRow.classList.remove('hidden');
+            phoneEl.innerText = phone;
+            smsContainer.classList.remove('hidden');
+
+            const firstName = event.title.split(' ')[0]; // Simple name extraction
+            // Reminder Text
+            const remindMsg = `Hi ${firstName}, this is JLS Lawn Care. Just a reminder that we'll be by tomorrow for your service. Thanks!`;
+            btnRemind.href = `sms:${phone}?&body=${encodeURIComponent(remindMsg)}`;
+
+            // Thank You Text
+            const thanksMsg = `Hi ${firstName}, your lawn is all done! Thanks for choosing JLS Lawn Care. See you next time!`;
+            btnThanks.href = `sms:${phone}?&body=${encodeURIComponent(thanksMsg)}`;
+
+        } else {
+            phoneRow.classList.add('hidden');
+            smsContainer.classList.add('hidden');
         }
 
         // Update Button State
@@ -299,6 +349,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         overlay.classList.remove('hidden');
         document.getElementById('wizard-client').value = '';
+        document.getElementById('wizard-client').value = '';
+        document.getElementById('wizard-client').value = '';
+        document.getElementById('wizard-phone').value = '';
+        document.getElementById('wizard-address').value = '';
         document.getElementById('wizard-price').value = '';
         document.getElementById('wizard-date').value = '';
         document.getElementById('wizard-notes').value = '';

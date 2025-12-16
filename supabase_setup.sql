@@ -23,3 +23,9 @@ for ALL
 to public
 using ( true )
 with check ( true );
+
+-- 3. Add price column (Run this if you already created the table)
+-- alter table public.jobs add column price numeric;
+
+-- 4. Add address column
+-- alter table public.jobs add column address text;

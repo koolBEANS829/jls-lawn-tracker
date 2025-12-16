@@ -57,6 +57,18 @@
                         <input type="text" id="wizard-client" placeholder="e.g. Smith Residence">
                     </div>
 
+                    <!-- Client Phone -->
+                    <div class="form-group-large">
+                        <label for="wizard-phone">Phone Number (Optional)</label>
+                        <input type="tel" id="wizard-phone" placeholder="e.g. 555-123-4567" inputmode="tel">
+                    </div>
+
+                    <!-- Address -->
+                    <div class="form-group-large">
+                        <label for="wizard-address">Address</label>
+                        <input type="text" id="wizard-address" placeholder="e.g. 123 Main St">
+                    </div>
+
                     <!-- Job Type -->
                     <div class="form-group-large">
                         <label>What's the Job?</label>
@@ -113,8 +125,24 @@
                     </div>
 
                     <div class="detail-row">
+                        <strong>Address:</strong>
+                        <span id="view-job-address">...</span>
+                    </div>
+
+                    <div class="detail-row">
                         <strong>Price:</strong>
                         <span id="view-job-price">...</span>
+                    </div>
+
+                    <div class="detail-row" id="view-job-phone-row">
+                        <strong>Phone:</strong>
+                        <span id="view-job-phone">...</span>
+                    </div>
+
+                    <!-- SMS Actions -->
+                    <div class="sms-actions">
+                        <a id="btn-sms-remind" href="#" class="btn-sms remind">📲 Remind</a>
+                        <a id="btn-sms-thanks" href="#" class="btn-sms thanks">⭐ Thank You</a>
                     </div>
 
                     <div class="detail-row">
