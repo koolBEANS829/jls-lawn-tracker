@@ -1,0 +1,457 @@
+:root {
+    --primary-color: #0B4619;
+    /* Dark Green */
+    --accent-color: #4CAF50;
+    /* Lighter Green (New Accent) */
+    --hedge-color: #ff9100;
+    /* Orange (Preserved for Hedge) */
+    --bg-color: #f4f4f9;
+    --text-color: #1a1a1a;
+    --white: #ffffff;
+    --touch-target-min: 48px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Header */
+.app-header {
+    background-color: var(--primary-color);
+    color: var(--white);
+    padding: 1rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Main Content */
+main {
+    padding: 1rem;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Calendar Tweaks for "Dad Mode" */
+#calendar {
+    background-color: var(--white);
+    padding: 0.5rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    min-height: 80vh;
+    position: relative;
+    z-index: 0;
+    overflow: hidden;
+}
+
+/* Make buttons BIG and EASY TO SEE */
+.fc-button {
+    height: var(--touch-target-min) !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+}
+
+.fc-button-primary {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+
+.fc-button-active {
+    background-color: #072e10 !important;
+}
+
+.fc-toolbar-title {
+    font-size: 1.25rem !important;
+    font-weight: 700;
+}
+
+/* Events */
+.fc-event {
+    font-size: 1rem !important;
+    padding: 4px !important;
+    cursor: pointer;
+    border: none !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.fc-event-title {
+    font-weight: 600;
+}
+
+/* Distinguish Mowing vs Hedge Trimming */
+.job-mowing {
+    background-color: var(--primary-color) !important;
+    border-left: 5px solid #072e10 !important;
+    color: var(--white) !important;
+}
+
+.job-hedge {
+    background-color: var(--hedge-color) !important;
+    border-left: 5px solid #bf360c !important;
+}
+
+/* Empty Day Placeholders */
+
+/* 1. Hide in DayGrid (Month) View */
+.fc-daygrid-event.job-empty-day {
+    display: none !important;
+}
+
+/* 2. Show & Style in List View */
+.fc-list-event.job-empty-day {
+    cursor: default;
+    background-color: transparent !important;
+}
+
+/* Remove hover effect on the row */
+.fc-list-event.job-empty-day:hover td {
+    background-color: transparent !important;
+}
+
+/* Hide the dot */
+.fc-list-event.job-empty-day .fc-list-event-dot {
+    display: none;
+}
+
+/* Style the text */
+.fc-list-event.job-empty-day .fc-list-event-title,
+.fc-list-event.job-empty-day .fc-list-event-time {
+    color: #aaa;
+    font-style: italic;
+    font-weight: 400 !important;
+    text-transform: none;
+    /* Reset uppercase if set globally */
+}
+
+/* --- Job Entry Form --- */
+#add-job-section {
+    background-color: var(--white);
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#add-job-section h2 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+    border-bottom: 2px solid var(--bg-color);
+    padding-bottom: 0.5rem;
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+/* Mark as Done Button */
+.btn-complete {
+    background-color: #2196F3;
+    /* Blue for action */
+    color: var(--white);
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+.btn-complete.completed-state {
+    background-color: #4CAF50;
+    /* Green */
+    cursor: default;
+    pointer-events: none;
+}
+
+/* Completed Job on Calendar */
+.job-completed {
+    opacity: 0.6;
+    text-decoration: line-through;
+    border-color: #888 !important;
+}
+
+.job-completed .fc-event-title::before {
+    content: "✓ ";
+}
+
+/* --- Lock Screen --- */
+#login-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--primary-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.login-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+    width: 90%;
+    max-width: 320px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.login-card h1 {
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.login-card p {
+    color: #666;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+#pin-input {
+    font-size: 2rem;
+    letter-spacing: 0.5rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.btn-unlock {
+    width: 100%;
+    padding: 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 1.2rem;
+    font-weight: 800;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* Big Inputs for Dad Mode */
+input[type="text"],
+input[type="datetime-local"],
+select,
+textarea {
+    width: 100%;
+    height: 54px;
+    /* Big height */
+    padding: 0 1rem;
+    font-size: 1.1rem;
+    /* Large text */
+    border: 2px solid #ccc;
+    border-radius: 6px;
+    background-color: #fafafa;
+    font-family: inherit;
+}
+
+textarea {
+    height: 100px;
+    /* Taller for notes */
+    padding-top: 10px;
+    resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--primary-color);
+    outline: none;
+}
+
+/* Save Button */
+.btn-save {
+    width: 100%;
+    height: 60px;
+    /* Huge button */
+    background-color: var(--primary-color);
+    color: var(--white);
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.2s;
+}
+
+.btn-save:active {
+    background-color: #072e10;
+    transform: translateY(2px);
+}
+
+/* --- FAB (Floating Action Button) --- */
+.fab-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: var(--white);
+    border: none;
+    font-size: 3rem;
+    line-height: 1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.fab-btn:active {
+    transform: scale(0.95);
+}
+
+/* --- Wizard Modal --- */
+.wizard-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wizard-card {
+    background-color: var(--white);
+    width: 90%;
+    max-width: 500px;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Wizard Header */
+.wizard-header {
+    display: flex;
+    justify-content: flex-start;
+    /* changed from space-between */
+    align-items: center;
+    gap: 1rem;
+    /* Small gap between X and Title */
+    margin-bottom: 1.5rem;
+}
+
+.close-btn {
+    font-size: 2rem;
+    cursor: pointer;
+    color: #666;
+}
+
+/* Wizard Steps */
+.form-group-large {
+    margin-bottom: 1.5rem;
+}
+
+.form-group-large label {
+    font-size: 1.1rem;
+    /* Reduced from 1.5rem */
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.wizard-actions {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Step 2: Big Job Type Buttons (Adjusted Size) */
+.job-type-selection {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-big-type {
+    flex: 1;
+    padding: 1rem;
+    /* Reduced from 1.5rem */
+    font-size: 1.1rem;
+    /* Reduced from 1.5rem */
+    font-weight: 700;
+    border: 2px solid #ccc;
+    /* Visible default border */
+    border-radius: 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    background-color: #f9f9f9;
+    color: #666;
+}
+
+.btn-big-type.mowing.selected {
+    background-color: var(--primary-color);
+    color: var(--white);
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 6px rgba(11, 70, 25, 0.2);
+}
+
+.btn-big-type.hedge.selected {
+    background-color: var(--hedge-color);
+    color: var(--white);
+    border-color: var(--hedge-color);
+    box-shadow: 0 4px 6px rgba(230, 81, 0, 0.2);
+}
+
+.btn-big-type:active {
+    transform: scale(0.98);
+}

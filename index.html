@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JLS Lawn Maintenance Command Center</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- FullCalendar -->
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Login Overlay -->
+    <div id="login-overlay">
+        <div class="login-card">
+            <h1>🔒 LOCKED</h1>
+            <p>Enter Crew PIN</p>
+            <input type="tel" id="pin-input" maxlength="4" placeholder="____">
+            <button class="btn-unlock" onclick="checkPin()">UNLOCK</button>
+        </div>
+    </div>
+
+    <header class="app-header">
+
+        <h1>JLS Maintenance Job Tracker</h1>
+    </header>
+
+    <main>
+        <div id='calendar'></div>
+
+        <!-- Floating Action Button -->
+        <button id="fab-add-job" class="fab-btn" aria-label="Add New Job">+</button>
+
+        <!-- Ghost/Overlay for Wizard -->
+        <div id="wizard-overlay" class="wizard-overlay hidden">
+            <div class="wizard-card">
+                <div class="wizard-header">
+                    <h2 id="wizard-title">New Job</h2>
+                    <span id="wizard-close" class="close-btn">&times;</span>
+                </div>
+
+                <!-- Single View Form -->
+                <div class="wizard-form-stack">
+
+                    <!-- Client Name -->
+                    <div class="form-group-large">
+                        <label for="wizard-client">Who is the Client?</label>
+                        <input type="text" id="wizard-client" placeholder="e.g. Smith Residence">
+                    </div>
+
+                    <!-- Job Type -->
+                    <div class="form-group-large">
+                        <label>What's the Job?</label>
+                        <div class="job-type-selection">
+                            <button class="btn-big-type mowing" onclick="selectJobType('mowing')">
+                                🌱 MOWING
+                            </button>
+                            <button class="btn-big-type hedge" onclick="selectJobType('hedge')">
+                                ✂️ HEDGE
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Date & Time -->
+                    <div class="form-group-large">
+                        <label for="wizard-date">When?</label>
+                        <input type="datetime-local" id="wizard-date">
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="form-group-large">
+                        <label for="wizard-notes">Notes (Optional)</label>
+                        <textarea id="wizard-notes" placeholder="e.g. Gate code is 1234, Watch out for dog"></textarea>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="wizard-actions right-align">
+                        <button class="btn-save" onclick="saveJob()">SCHEDULE JOB</button>
+                    </div>
+                </div>
+                <!-- Job Details Modal -->
+                <div id="job-details-modal" class="wizard-overlay hidden">
+                    <div class="wizard-card">
+                        <div class="wizard-header">
+                            <span id="view-job-close" class="close-btn">&times;</span>
+                            <h2 id="view-job-title">Job Details</h2>
+                        </div>
+
+                        <div class="job-details-content">
+                            <div id="view-job-type-badge" class="job-type-badge">MOWING</div>
+
+                            <div class="detail-row">
+                                <strong>When:</strong>
+                                <span id="view-job-date">...</span>
+                            </div>
+
+                            <div class="detail-row">
+                                <strong>Notes:</strong>
+                                <p id="view-job-notes" class="notes-box">No notes.</p>
+                            </div>
+                        </div>
+                        <div class="wizard-actions right-align">
+                            <button id="btn-mark-done" class="btn-complete" onclick="markJobAsDone()">MARK AS
+                                DONE</button>
+                        </div>
+                    </div>
+                </div>
+    </main>
+
+    <!-- App Logic -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
