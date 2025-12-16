@@ -164,6 +164,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.saveJob = async function () {
         const client = document.getElementById('wizard-client').value;
+        const priceVal = document.getElementById('wizard-price').value;
         const dateVal = document.getElementById('wizard-date').value;
         const notes = document.getElementById('wizard-notes').value;
 
@@ -172,6 +173,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!dateVal) { alert('Please pick a date!'); return; }
 
         let eventTitle = client;
+        // Append price if exists
+        if (priceVal) {
+            eventTitle += ` ($${priceVal})`;
+        }
+
         let displayType = selectedType === 'mowing' ? 'Mowing' : 'Hedge Trimming';
         if (!eventTitle.toLowerCase().includes(displayType.toLowerCase())) {
             eventTitle += ` - ${displayType}`;
@@ -233,6 +239,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const notes = event.extendedProps.notes || 'No notes.';
         document.getElementById('view-job-notes').innerText = notes;
 
+        // Parse Price from Title if present e.g. " ($50)"
+        const priceMatch = event.title.match(/\(\$(\d+(?:\.\d{2})?)\)/);
+        const priceVal = priceMatch ? priceMatch[1] : null;
+        const priceEl = document.getElementById('view-job-price');
+        if (priceVal) {
+            priceEl.innerText = '$' + priceVal;
+        } else {
+            priceEl.innerText = '--';
+        }
+
         // Update Button State
         if (event.extendedProps.status === 'done') {
             markDoneBtn.innerText = 'COMPLETED ✓';
@@ -283,6 +299,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         overlay.classList.remove('hidden');
         document.getElementById('wizard-client').value = '';
+        document.getElementById('wizard-price').value = '';
         document.getElementById('wizard-date').value = '';
         document.getElementById('wizard-notes').value = '';
         selectedType = '';
