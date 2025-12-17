@@ -107,7 +107,53 @@ main {
 
 .job-hedge {
     background-color: var(--hedge-color) !important;
+    background-color: var(--hedge-color) !important;
     border-left: 5px solid #bf360c !important;
+}
+
+/* --- Custom Event Content --- */
+.fc-event-main-frame {
+    display: flex;
+    flex-direction: column;
+}
+
+.event-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 2px;
+    overflow: hidden;
+}
+
+.event-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.event-details-row {
+    font-size: 0.8rem;
+    opacity: 0.9;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.event-price {
+    font-weight: 600;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 0 4px;
+    border-radius: 4px;
+}
+
+.event-address {
+    font-style: italic;
+    opacity: 0.8;
 }
 
 /* Empty Day Placeholders */

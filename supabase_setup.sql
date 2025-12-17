@@ -29,3 +29,7 @@ with check ( true );
 
 -- 4. Add address column
 -- alter table public.jobs add column address text;
+
+-- 5. Add phone column (Fix for 'client_phone' error)
+-- alter table public.jobs add column client_phone text;
+

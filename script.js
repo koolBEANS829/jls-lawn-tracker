@@ -53,6 +53,54 @@ document.addEventListener('DOMContentLoaded', function () {
         initialView: 'dayGridMonth',
         headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listWeek' },
         height: 'auto',
+        // Custom Content Renderer
+        eventContent: function (arg) {
+            // Handle "Empty Day" placeholders
+            if (arg.event.classNames.includes('job-empty-day')) {
+                return { domNodes: [] }; // Default rendering for empty days (using CSS to hide/show)
+            }
+
+            const props = arg.event.extendedProps;
+            const price = props.price;
+            const address = props.address;
+
+            // Create Container
+            let container = document.createElement('div');
+            container.className = 'event-content';
+
+            // Title
+            let titleEl = document.createElement('div');
+            titleEl.className = 'event-title';
+            titleEl.innerText = arg.event.title;
+            container.appendChild(titleEl);
+
+            // Details Row (Price & Address)
+            if (price || address) {
+                let detailsEl = document.createElement('div');
+                detailsEl.className = 'event-details-row';
+
+                if (price) {
+                    let priceEl = document.createElement('span');
+                    priceEl.className = 'event-price';
+                    priceEl.innerText = '$' + price;
+                    detailsEl.appendChild(priceEl);
+                }
+
+                if (address) {
+                    let addrEl = document.createElement('span');
+                    addrEl.className = 'event-address';
+                    // Simplify address for display (e.g. "123 Main St" -> "123 Main")
+                    let shortAddr = address.split(',')[0];
+                    if (shortAddr.length > 20) shortAddr = shortAddr.substring(0, 18) + '..';
+                    addrEl.innerText = shortAddr;
+                    detailsEl.appendChild(addrEl);
+                }
+
+                container.appendChild(detailsEl);
+            }
+
+            return { domNodes: [container] };
+        },
         events: function (info, successCallback, failureCallback) {
             // Helper to process and merge empty days
             const processEvents = (realEvents) => {
