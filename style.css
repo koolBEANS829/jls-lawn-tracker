@@ -450,6 +450,66 @@ textarea:focus {
     box-shadow: 0 0 0 4px rgba(13, 90, 31, 0.1);
 }
 
+/* Validation Error States */
+input.input-error,
+select.input-error,
+textarea.input-error {
+    border-color: var(--color-danger) !important;
+    background-color: #fef2f2 !important;
+    animation: shake 0.4s ease-out;
+}
+
+input.input-error:focus,
+select.input-error:focus,
+textarea.input-error:focus {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15) !important;
+}
+
+.form-group-large.has-error label {
+    color: var(--color-danger);
+}
+
+.job-type-selection.has-error .btn-big-type {
+    border-color: var(--color-danger);
+    animation: shake 0.4s ease-out;
+}
+
+.job-type-selection.has-error .btn-big-type:not(.selected) {
+    background-color: #fef2f2;
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-6px);
+    }
+
+    40% {
+        transform: translateX(6px);
+    }
+
+    60% {
+        transform: translateX(-4px);
+    }
+
+    80% {
+        transform: translateX(4px);
+    }
+}
+
+.validation-message {
+    display: block;
+    margin-top: 6px;
+    font-size: var(--font-size-sm);
+    color: var(--color-danger);
+    font-weight: 500;
+}
+
 input::placeholder,
 textarea::placeholder {
     color: var(--color-text-light);
@@ -475,6 +535,63 @@ select {
     margin-top: 6px;
     font-size: var(--font-size-sm);
     color: var(--color-text-muted);
+}
+
+/* Address Autocomplete Dropdown */
+.autocomplete-wrapper {
+    position: relative;
+}
+
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    max-height: 200px;
+    margin-top: 4px;
+    background: var(--color-surface);
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.autocomplete-dropdown.hidden {
+    display: none;
+}
+
+.autocomplete-item {
+    padding: 12px 16px;
+    font-size: var(--font-size-base);
+    color: var(--color-text);
+    cursor: pointer;
+    border-bottom: 1px solid var(--color-border-light);
+    transition: background-color var(--transition-fast);
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.highlighted {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: var(--color-primary-dark);
+}
+
+.autocomplete-item .match-highlight {
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.autocomplete-empty {
+    padding: 12px 16px;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    font-style: italic;
+    text-align: center;
 }
 
 /* Checkbox */

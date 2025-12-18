@@ -39,7 +39,8 @@ const CONFIG = {
         key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwbHNvd2lsaXdlaWlsY29vbXRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4NDg3MDYsImV4cCI6MjA4MTQyNDcwNn0.eB-idCDGSqcltv2OH8WMvRFQlyx3IYrBqMD4o5oUXSE'
     },
     storage: {
-        jobsKey: 'jls_local_jobs'
+        jobsKey: 'jls_local_jobs',
+        addressesKey: 'jls_address_history'
     },
     recurrence: {
         weekly: 7,
@@ -372,12 +373,59 @@ window.saveJob = async function () {
         occurrences: parseInt(document.getElementById('wizard-occurrences').value) || 1
     };
 
-    // Validation
-    if (!formData.client) { alert('Please enter client name!'); return; }
-    if (!selectedJobType) { alert('Please select a job type!'); return; }
-    if (!formData.date) { alert('Please pick a date!'); return; }
+    // Clear previous validation errors
+    clearValidationErrors();
+
+    // Validation with visual feedback
+    let hasErrors = false;
+    const errors = [];
+
+    if (!formData.client) {
+        markFieldAsError('wizard-client');
+        errors.push('Client name is required');
+        hasErrors = true;
+    }
+
+    if (!selectedJobType) {
+        const jobTypeContainer = document.querySelector('.job-type-selection');
+        if (jobTypeContainer) {
+            jobTypeContainer.classList.add('has-error');
+            jobTypeContainer.closest('.form-group-large')?.classList.add('has-error');
+        }
+        errors.push('Please select a job type');
+        hasErrors = true;
+    }
+
+    if (!formData.address) {
+        markFieldAsError('wizard-address');
+        errors.push('Address is required');
+        hasErrors = true;
+    }
+
+    if (!formData.price) {
+        markFieldAsError('wizard-price');
+        errors.push('Price is required');
+        hasErrors = true;
+    }
+
+    if (!formData.date) {
+        markFieldAsError('wizard-date');
+        errors.push('Date is required');
+        hasErrors = true;
+    }
+
     if (formData.isRecurring && formData.occurrences < 2) {
-        alert('Recurring jobs need at least 2 occurrences!');
+        markFieldAsError('wizard-occurrences');
+        errors.push('Recurring jobs need at least 2 occurrences');
+        hasErrors = true;
+    }
+
+    if (hasErrors) {
+        // Scroll to first error
+        const firstError = document.querySelector('.input-error, .job-type-selection.has-error');
+        if (firstError) {
+            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
         return;
     }
 
@@ -428,6 +476,11 @@ window.saveJob = async function () {
             await createJobs(jobsToCreate);
             const jobWord = jobsToCreate.length > 1 ? 'Jobs' : 'Job';
             alert(`${jobsToCreate.length} ${jobWord} Scheduled!`);
+        }
+
+        // Save address to history for autocomplete
+        if (formData.address) {
+            saveAddressToHistory(formData.address);
         }
 
         safeRefetchCalendar();
@@ -681,6 +734,261 @@ async function cancelEntireSeries(recurringId) {
 }
 
 // ============================================================
+// Address Autocomplete
+// ============================================================
+
+let autocompleteHighlightIndex = -1;
+
+/**
+ * Saves an address to the history for autocomplete.
+ */
+function saveAddressToHistory(address) {
+    if (!address || address.trim().length < 3) return;
+
+    const normalizedAddress = address.trim();
+    let addresses = Storage.get(CONFIG.storage.addressesKey) || [];
+
+    // Check if address already exists (case-insensitive)
+    const existingIndex = addresses.findIndex(
+        a => a.toLowerCase() === normalizedAddress.toLowerCase()
+    );
+
+    if (existingIndex > -1) {
+        // Move to top (most recently used)
+        addresses.splice(existingIndex, 1);
+    }
+
+    // Add to beginning
+    addresses.unshift(normalizedAddress);
+
+    // Keep only the last 50 addresses
+    if (addresses.length > 50) {
+        addresses = addresses.slice(0, 50);
+    }
+
+    Storage.set(CONFIG.storage.addressesKey, addresses);
+}
+
+/**
+ * Gets address suggestions based on input.
+ */
+function getAddressSuggestions(query) {
+    if (!query || query.length < 2) return [];
+
+    const addresses = Storage.get(CONFIG.storage.addressesKey) || [];
+    const queryLower = query.toLowerCase();
+
+    return addresses
+        .filter(addr => addr.toLowerCase().includes(queryLower))
+        .slice(0, 8); // Max 8 suggestions
+}
+
+/**
+ * Shows the autocomplete dropdown with suggestions.
+ */
+function showAddressAutocomplete(suggestions, query) {
+    const dropdown = document.getElementById('address-autocomplete');
+    if (!dropdown) return;
+
+    if (suggestions.length === 0) {
+        dropdown.classList.add('hidden');
+        return;
+    }
+
+    const queryLower = query.toLowerCase();
+    dropdown.innerHTML = suggestions.map((addr, index) => {
+        // Highlight matching part
+        const matchIndex = addr.toLowerCase().indexOf(queryLower);
+        let displayText = addr;
+        if (matchIndex > -1) {
+            const before = addr.substring(0, matchIndex);
+            const match = addr.substring(matchIndex, matchIndex + query.length);
+            const after = addr.substring(matchIndex + query.length);
+            displayText = `${before}<span class="match-highlight">${match}</span>${after}`;
+        }
+        return `<div class="autocomplete-item" data-index="${index}" data-address="${escapeHtml(addr)}">${displayText}</div>`;
+    }).join('');
+
+    dropdown.classList.remove('hidden');
+    autocompleteHighlightIndex = -1;
+
+    // Add click handlers
+    dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+        item.addEventListener('click', () => {
+            selectAutocompleteAddress(item.dataset.address);
+        });
+    });
+}
+
+/**
+ * Hides the autocomplete dropdown.
+ */
+function hideAddressAutocomplete() {
+    const dropdown = document.getElementById('address-autocomplete');
+    if (dropdown) {
+        dropdown.classList.add('hidden');
+        autocompleteHighlightIndex = -1;
+    }
+}
+
+/**
+ * Selects an address from autocomplete.
+ */
+function selectAutocompleteAddress(address) {
+    const input = document.getElementById('wizard-address');
+    if (input) {
+        input.value = address;
+        clearFieldError('wizard-address');
+    }
+    hideAddressAutocomplete();
+}
+
+/**
+ * Handles keyboard navigation in autocomplete.
+ */
+function handleAutocompleteKeydown(e) {
+    const dropdown = document.getElementById('address-autocomplete');
+    if (!dropdown || dropdown.classList.contains('hidden')) return;
+
+    const items = dropdown.querySelectorAll('.autocomplete-item');
+    if (items.length === 0) return;
+
+    switch (e.key) {
+        case 'ArrowDown':
+            e.preventDefault();
+            autocompleteHighlightIndex = Math.min(autocompleteHighlightIndex + 1, items.length - 1);
+            updateAutocompleteHighlight(items);
+            break;
+        case 'ArrowUp':
+            e.preventDefault();
+            autocompleteHighlightIndex = Math.max(autocompleteHighlightIndex - 1, -1);
+            updateAutocompleteHighlight(items);
+            break;
+        case 'Enter':
+            if (autocompleteHighlightIndex >= 0 && items[autocompleteHighlightIndex]) {
+                e.preventDefault();
+                selectAutocompleteAddress(items[autocompleteHighlightIndex].dataset.address);
+            }
+            break;
+        case 'Escape':
+            hideAddressAutocomplete();
+            break;
+    }
+}
+
+/**
+ * Updates the visual highlight on autocomplete items.
+ */
+function updateAutocompleteHighlight(items) {
+    items.forEach((item, index) => {
+        if (index === autocompleteHighlightIndex) {
+            item.classList.add('highlighted');
+            item.scrollIntoView({ block: 'nearest' });
+        } else {
+            item.classList.remove('highlighted');
+        }
+    });
+}
+
+/**
+ * Escapes HTML to prevent XSS.
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Initializes the address autocomplete functionality.
+ */
+function initAddressAutocomplete() {
+    const addressInput = document.getElementById('wizard-address');
+    if (!addressInput) return;
+
+    // Show suggestions on input
+    addressInput.addEventListener('input', (e) => {
+        const query = e.target.value;
+        const suggestions = getAddressSuggestions(query);
+        showAddressAutocomplete(suggestions, query);
+    });
+
+    // Handle keyboard navigation
+    addressInput.addEventListener('keydown', handleAutocompleteKeydown);
+
+    // Show suggestions on focus if there's already text
+    addressInput.addEventListener('focus', (e) => {
+        const query = e.target.value;
+        if (query.length >= 2) {
+            const suggestions = getAddressSuggestions(query);
+            showAddressAutocomplete(suggestions, query);
+        }
+    });
+
+    // Hide on blur (with delay to allow clicks)
+    addressInput.addEventListener('blur', () => {
+        setTimeout(hideAddressAutocomplete, 200);
+    });
+}
+
+// ============================================================
+// Form Validation Helpers
+// ============================================================
+
+/**
+ * Clears all validation error states from form fields.
+ */
+function clearValidationErrors() {
+    // Clear input errors
+    document.querySelectorAll('.input-error').forEach(el => {
+        el.classList.remove('input-error');
+    });
+
+    // Clear form group errors
+    document.querySelectorAll('.form-group-large.has-error').forEach(el => {
+        el.classList.remove('has-error');
+    });
+
+    // Clear job type selection errors
+    const jobTypeSelection = document.querySelector('.job-type-selection');
+    if (jobTypeSelection) {
+        jobTypeSelection.classList.remove('has-error');
+    }
+
+    // Remove any validation messages
+    document.querySelectorAll('.validation-message').forEach(el => el.remove());
+}
+
+/**
+ * Marks a specific field as having an error.
+ */
+function markFieldAsError(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (field) {
+        field.classList.add('input-error');
+        // Mark parent form group
+        const formGroup = field.closest('.form-group-large');
+        if (formGroup) {
+            formGroup.classList.add('has-error');
+        }
+    }
+}
+
+/**
+ * Clears error state from a specific field.
+ */
+function clearFieldError(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (field) {
+        field.classList.remove('input-error');
+        const formGroup = field.closest('.form-group-large');
+        if (formGroup) {
+            formGroup.classList.remove('has-error');
+        }
+    }
+}
+
+// ============================================================
 // UI Functions
 // ============================================================
 
@@ -688,6 +996,13 @@ window.selectJobType = function (type) {
     selectedJobType = type;
     document.querySelectorAll('.btn-big-type').forEach(btn => btn.classList.remove('selected'));
     document.querySelector(`.btn-big-type.${type}`)?.classList.add('selected');
+
+    // Clear job type validation error when user selects a type
+    const jobTypeSelection = document.querySelector('.job-type-selection');
+    if (jobTypeSelection) {
+        jobTypeSelection.classList.remove('has-error');
+        jobTypeSelection.closest('.form-group-large')?.classList.remove('has-error');
+    }
 };
 
 window.toggleRecurringOptions = function () {
@@ -778,6 +1093,9 @@ function openWizard() {
 
     isEditMode = false;
     selectedJobType = '';
+
+    // Clear any previous validation errors
+    clearValidationErrors();
 
     document.getElementById('wizard-title').textContent = 'New Job';
     document.getElementById('wizard-client').value = '';
@@ -1025,6 +1343,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.log('✅ Calendar initialized');
     }
 
+    // Initialize Address Autocomplete
+    initAddressAutocomplete();
+
     // Setup Event Listeners
     const fab = document.getElementById('fab-add-job');
     const wizardOverlay = document.getElementById('wizard-overlay');
@@ -1033,6 +1354,16 @@ document.addEventListener('DOMContentLoaded', async function () {
     fab?.addEventListener('click', openWizard);
     document.getElementById('wizard-close')?.addEventListener('click', closeWizard);
     document.getElementById('view-job-close')?.addEventListener('click', closeJobDetails);
+
+    // Setup validation error clearing on input
+    const validatedFields = ['wizard-client', 'wizard-address', 'wizard-price', 'wizard-date', 'wizard-occurrences'];
+    validatedFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.addEventListener('input', () => clearFieldError(fieldId));
+            field.addEventListener('change', () => clearFieldError(fieldId));
+        }
+    });
 
     // Close modals on backdrop click
     wizardOverlay?.addEventListener('click', (e) => {
