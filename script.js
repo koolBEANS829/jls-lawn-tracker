@@ -1,492 +1,1108 @@
-console.log('--- SCRIPT.JS LOADED ---');
+/**
+ * JLS Lawn Maintenance - Command Center
+ * 
+ * A mobile-first job scheduling application for lawn care management.
+ * Features: FullCalendar integration, Supabase cloud sync, local fallback.
+ */
 
-// --- OVERRIDE DEFAULT ALERT  ---
-// (We want logs to go to our debug console, not blocking alerts)
-window.alert = function (msg) { console.warn('ALERT:', msg); };
+'use strict';
 
-// --- CONFIGURATION ---
-const SUPABASE_URL = 'https://eplsowiliweiilcoomtd.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwbHNvd2lsaXdlaWlsY29vbXRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4NDg3MDYsImV4cCI6MjA4MTQyNDcwNn0.eB-idCDGSqcltv2OH8WMvRFQlyx3IYrBqMD4o5oUXSE';
+// ============================================================
+// Global Error Handling
+// ============================================================
 
-// Initialize Supabase - DYNAMICALLY
-// We load this dynamically so if it crashes (due to file:// protocol), the rest of the app still runs.
-let supabase;
+/**
+ * Global error handler to prevent total app crashes.
+ * Logs errors and provides user feedback.
+ */
+window.onerror = function (message, source, lineno, colno, error) {
+    console.error('Global Error:', { message, source, lineno, colno, error });
+    // Don't show error to user for minor issues, just log them
+    return true; // Prevents default error handling
+};
 
-function loadSupabase() {
-    return new Promise((resolve, reject) => {
+window.onunhandledrejection = function (event) {
+    console.error('Unhandled Promise Rejection:', event.reason);
+    // Suppress default behavior for handled rejections
+    event.preventDefault();
+};
+
+console.log('--- JLS Lawn Tracker Initialized ---');
+
+// ============================================================
+// Configuration
+// ============================================================
+
+const CONFIG = {
+    supabase: {
+        url: 'https://eplsowiliweiilcoomtd.supabase.co',
+        key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwbHNvd2lsaXdlaWlsY29vbXRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4NDg3MDYsImV4cCI6MjA4MTQyNDcwNn0.eB-idCDGSqcltv2OH8WMvRFQlyx3IYrBqMD4o5oUXSE'
+    },
+    storage: {
+        jobsKey: 'jls_local_jobs'
+    },
+    recurrence: {
+        weekly: 7,
+        biweekly: 14,
+        monthly: 30
+    }
+};
+
+// ============================================================
+// Global State
+// ============================================================
+
+let supabaseClient = null; // Renamed to avoid conflict with supabase.min.js SDK
+let calendar = null;
+let currentEventId = null;
+let currentRecurringId = null;
+let isEditMode = false;
+let selectedJobType = '';
+
+// ============================================================
+// Storage Utilities
+// ============================================================
+
+/**
+ * Safe wrapper for localStorage operations.
+ * Prevents crashes in private browsing or restricted environments.
+ */
+const Storage = {
+    get(key) {
+        try {
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : null;
+        } catch (error) {
+            console.error('Storage Read Error:', error);
+            return null;
+        }
+    },
+
+    set(key, value) {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+            return true;
+        } catch (error) {
+            console.error('Storage Write Error:', error);
+            alert('WARNING: Could not save data. Private browsing mode?');
+            return false;
+        }
+    }
+};
+
+// ============================================================
+// Supabase Initialization
+// ============================================================
+
+/**
+ * Dynamically loads and initializes Supabase client.
+ * Falls back to local mode if loading fails.
+ */
+async function initializeSupabase() {
+    return new Promise((resolve) => {
+        // Check if SDK already loaded (prevents double-loading errors)
+        if (window.supabase?.createClient) {
+            try {
+                supabaseClient = window.supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.key);
+                console.log('✅ Supabase Connected (Cloud Mode)');
+                verifySupabaseConnection();
+                resolve(true);
+            } catch (error) {
+                console.warn('⚠️ Supabase init failed:', error);
+                resolve(false);
+            }
+            return;
+        }
+
         const script = document.createElement('script');
         script.src = 'supabase.min.js';
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Failed to load supabase.min.js'));
+
+        script.onload = () => {
+            const SupabaseSDK = window.supabase || window.Supabase;
+
+            if (!SupabaseSDK?.createClient) {
+                console.warn('⚠️ Supabase SDK not available. Running in LOCAL MODE.');
+                resolve(false);
+                return;
+            }
+
+            try {
+                supabaseClient = SupabaseSDK.createClient(CONFIG.supabase.url, CONFIG.supabase.key);
+                console.log('✅ Supabase Connected (Cloud Mode)');
+                verifySupabaseConnection();
+                resolve(true);
+            } catch (error) {
+                console.warn('⚠️ Supabase init failed:', error);
+                resolve(false);
+            }
+        };
+
+        script.onerror = () => {
+            console.warn('⚠️ Could not load Supabase. Running in LOCAL MODE.');
+            resolve(false);
+        };
+
         document.body.appendChild(script);
     });
 }
 
-// Start loading...
-loadSupabase().then(() => {
-    // Check if loaded correctly (some strict browsers block execution even if "loaded")
-    const SupabaseConstructor = window.supabase || window.Supabase;
+/**
+ * Verifies Supabase connection is working.
+ */
+function verifySupabaseConnection() {
+    if (supabaseClient) {
+        supabaseClient.from('jobs').select('count', { count: 'exact', head: true })
+            .then(() => console.log('✅ Cloud connection verified'))
+            .catch((e) => console.warn('⚠️ Cloud connection unstable:', e));
+    }
+}
 
-    if (!SupabaseConstructor || !SupabaseConstructor.createClient) {
-        console.warn('⚠️ Supabase script loaded but SDK not found (Browser Restriction?). Defaulting to LOCAL MODE.');
-        return; // Stay in local mode (supabase var remains undefined)
+// ============================================================
+// Event Class Helpers
+// ============================================================
+
+/**
+ * Generates CSS class names for calendar events based on type and status.
+ */
+function getEventClasses(type, status, isRecurring) {
+    const classes = [];
+
+    if (type === 'mowing') classes.push('job-mowing');
+    else if (type === 'hedge') classes.push('job-hedge');
+
+    if (status === 'done') classes.push('job-completed');
+    if (status === 'cancelled') classes.push('job-cancelled');
+    if (isRecurring) classes.push('job-recurring');
+
+    return classes;
+}
+
+/**
+ * Maps a database job record to a FullCalendar event object.
+ */
+function mapJobToEvent(job) {
+    return {
+        id: job.id,
+        title: job.title,
+        start: job.start_time,
+        type: job.job_type,
+        notes: job.notes,
+        status: job.status,
+        price: job.price,
+        address: job.address,
+        phone: job.client_phone,
+        recurring_id: job.recurring_id,
+        is_recurring: job.is_recurring,
+        recurrence_pattern: job.recurrence_pattern,
+        occurrence_number: job.occurrence_number,
+        classNames: getEventClasses(job.job_type, job.status, job.is_recurring)
+    };
+}
+
+// ============================================================
+// Calendar Event Rendering
+// ============================================================
+
+/**
+ * Custom renderer for calendar event content.
+ */
+function renderEventContent(arg) {
+    // Skip rendering for empty day placeholders
+    if (arg.event.classNames.includes('job-empty-day')) {
+        return { domNodes: [] };
     }
 
+    const { price, address } = arg.event.extendedProps;
+
+    const container = document.createElement('div');
+    container.className = 'event-content';
+
+    // Event Title
+    const titleEl = document.createElement('div');
+    titleEl.className = 'event-title';
+    titleEl.textContent = arg.event.title;
+    container.appendChild(titleEl);
+
+    // Event Details (Price & Address)
+    if (price || address) {
+        const detailsEl = document.createElement('div');
+        detailsEl.className = 'event-details-row';
+
+        if (price) {
+            const priceEl = document.createElement('span');
+            priceEl.className = 'event-price';
+            priceEl.textContent = `$${price}`;
+            detailsEl.appendChild(priceEl);
+        }
+
+        if (address) {
+            const addrEl = document.createElement('span');
+            addrEl.className = 'event-address';
+            let shortAddr = address.split(',')[0];
+            if (shortAddr.length > 20) shortAddr = shortAddr.substring(0, 18) + '..';
+            addrEl.textContent = shortAddr;
+            detailsEl.appendChild(addrEl);
+        }
+
+        container.appendChild(detailsEl);
+    }
+
+    return { domNodes: [container] };
+}
+
+/**
+ * Generates "No Jobs" placeholders for empty days in list view.
+ */
+function addEmptyDayPlaceholders(events, startDate, endDate) {
+    const daysWithJobs = new Set(
+        events.map(e => new Date(e.start).toDateString())
+    );
+
+    const current = new Date(startDate);
+    const end = new Date(endDate);
+
+    while (current < end) {
+        if (!daysWithJobs.has(current.toDateString())) {
+            events.push({
+                title: 'No Jobs',
+                start: new Date(current),
+                allDay: true,
+                classNames: ['job-empty-day']
+            });
+        }
+        current.setDate(current.getDate() + 1);
+    }
+
+    return events;
+}
+
+// ============================================================
+// Data Fetching
+// ============================================================
+
+/**
+ * Fetches jobs from Supabase or local storage.
+ * Automatically falls back to local storage on cloud errors.
+ */
+async function fetchEvents(info, successCallback, failureCallback) {
+    const processEvents = (rawEvents) => {
+        try {
+            // Filter out any invalid events
+            const validEvents = (rawEvents || []).filter(e => e && (e.start || e.start_time));
+            const events = addEmptyDayPlaceholders([...validEvents], info.start, info.end);
+            successCallback(events);
+        } catch (e) {
+            console.error('Error processing events:', e);
+            successCallback([]); // Return empty array rather than crashing
+        }
+    };
+
+    // Local mode fallback
+    if (!supabaseClient) {
+        console.warn('Using local data (Supabase not connected)');
+        try {
+            const localJobs = Storage.get(CONFIG.storage.jobsKey) || [];
+            processEvents(localJobs);
+        } catch (e) {
+            console.error('Error reading local storage:', e);
+            processEvents([]);
+        }
+        return;
+    }
+
+    // Fetch from cloud with timeout
     try {
-        if (SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') {
-            supabase = SupabaseConstructor.createClient(SUPABASE_URL, SUPABASE_KEY);
-            console.log('✅ Supabase Connected (Cloud Mode)');
-            // Check if we can actually fetch (might fail in file://)
-            supabase.from('jobs').select('count', { count: 'exact', head: true })
-                .then(() => console.log('✅ Connection verified'))
-                .catch(e => console.warn('⚠️ Cloud connection unstable (File Protocol?):', e));
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timeout')), 10000)
+        );
+
+        const fetchPromise = supabaseClient.from('jobs').select('*');
+        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (error) {
+            console.error('Error fetching jobs:', error);
+            // Fallback to local storage on cloud error
+            console.warn('Falling back to local storage...');
+            const localJobs = Storage.get(CONFIG.storage.jobsKey) || [];
+            processEvents(localJobs);
+            return;
+        }
+
+        const mappedEvents = (data || []).map(job => {
+            try {
+                return mapJobToEvent(job);
+            } catch (e) {
+                console.warn('Error mapping job:', job?.id, e);
+                return null;
+            }
+        }).filter(Boolean);
+
+        processEvents(mappedEvents);
+    } catch (error) {
+        console.error('Fetch error:', error);
+        // Fallback to local storage on any error
+        console.warn('Falling back to local storage due to network error...');
+        try {
+            const localJobs = Storage.get(CONFIG.storage.jobsKey) || [];
+            processEvents(localJobs);
+        } catch (e) {
+            console.error('Local storage fallback also failed:', e);
+            processEvents([]);
+        }
+    }
+}
+
+// ============================================================
+// Job CRUD Operations
+// ============================================================
+
+/**
+ * Creates or updates a job.
+ */
+window.saveJob = async function () {
+    const formData = {
+        client: document.getElementById('wizard-client').value.trim(),
+        phone: document.getElementById('wizard-phone').value.trim(),
+        address: document.getElementById('wizard-address').value.trim(),
+        price: document.getElementById('wizard-price').value,
+        date: document.getElementById('wizard-date').value,
+        notes: document.getElementById('wizard-notes').value.trim(),
+        isRecurring: document.getElementById('wizard-recurring').checked,
+        frequency: document.getElementById('wizard-frequency').value,
+        occurrences: parseInt(document.getElementById('wizard-occurrences').value) || 1
+    };
+
+    // Validation
+    if (!formData.client) { alert('Please enter client name!'); return; }
+    if (!selectedJobType) { alert('Please select a job type!'); return; }
+    if (!formData.date) { alert('Please pick a date!'); return; }
+    if (formData.isRecurring && formData.occurrences < 2) {
+        alert('Recurring jobs need at least 2 occurrences!');
+        return;
+    }
+
+    // Build title
+    const typeLabel = selectedJobType === 'mowing' ? 'Mowing' : 'Hedge Trimming';
+    let eventTitle = formData.client;
+    if (!eventTitle.toLowerCase().includes(typeLabel.toLowerCase())) {
+        eventTitle += ` - ${typeLabel}`;
+    }
+
+    // Generate job(s)
+    const recurringId = formData.isRecurring ? `rec_${Date.now()}` : null;
+    const intervalDays = CONFIG.recurrence[formData.frequency] || 7;
+    const numJobs = formData.isRecurring ? formData.occurrences : 1;
+    const jobsToCreate = [];
+
+    for (let i = 0; i < numJobs; i++) {
+        const jobDate = new Date(formData.date);
+        jobDate.setDate(jobDate.getDate() + (i * intervalDays));
+
+        const job = {
+            title: eventTitle,
+            start_time: jobDate.toISOString().slice(0, 16),
+            job_type: selectedJobType,
+            notes: formData.notes,
+            price: formData.price || null,
+            address: formData.address,
+            client_phone: formData.phone,
+            status: isEditMode && i === 0 ? undefined : 'pending',
+            recurring_id: recurringId,
+            is_recurring: formData.isRecurring,
+            recurrence_pattern: formData.isRecurring
+                ? JSON.stringify({ frequency: formData.frequency, interval: intervalDays })
+                : null,
+            occurrence_number: i + 1
+        };
+
+        if (job.status === undefined) delete job.status;
+        jobsToCreate.push(job);
+    }
+
+    // Save
+    try {
+        if (isEditMode) {
+            await updateJob(currentEventId, jobsToCreate[0]);
+            alert('Job Updated!');
+        } else {
+            await createJobs(jobsToCreate);
+            const jobWord = jobsToCreate.length > 1 ? 'Jobs' : 'Job';
+            alert(`${jobsToCreate.length} ${jobWord} Scheduled!`);
+        }
+
+        safeRefetchCalendar();
+        closeWizard();
+        isEditMode = false;
+    } catch (error) {
+        console.error('Save error:', error);
+        alert('Error saving: ' + (error?.message || 'Unknown error'));
+    }
+};
+
+/**
+ * Safely refetch calendar events without crashing.
+ */
+function safeRefetchCalendar() {
+    try {
+        if (calendar && typeof calendar.refetchEvents === 'function') {
+            calendar.refetchEvents();
         }
     } catch (e) {
-        console.warn('⚠️ Supabase Init warning:', e);
+        console.error('Error refetching calendar:', e);
     }
-}).catch(err => {
-    console.warn('⚠️ Supabase could not load. App will run in LOCAL MODE.');
-});
+}
 
-// --- SECURITY LOGIC ---
-// (Removed)
+/**
+ * Creates new jobs in database or local storage.
+ */
+async function createJobs(jobs) {
+    if (supabaseClient) {
+        const { error } = await supabaseClient.from('jobs').insert(jobs).select();
+        if (error) throw error;
+    } else {
+        const existing = Storage.get(CONFIG.storage.jobsKey) || [];
+        jobs.forEach((job, idx) => {
+            job.id = `${Date.now()}_${idx}`;
+            existing.push({
+                id: job.id,
+                title: job.title,
+                start: job.start_time,
+                type: job.job_type,
+                notes: job.notes,
+                phone: job.client_phone,
+                status: job.status,
+                price: job.price,
+                address: job.address,
+                recurring_id: job.recurring_id,
+                is_recurring: job.is_recurring,
+                classNames: getEventClasses(job.job_type, job.status, job.is_recurring)
+            });
+        });
+        Storage.set(CONFIG.storage.jobsKey, existing);
+    }
+}
 
-document.addEventListener('DOMContentLoaded', function () {
-    // (Security check removed)
+/**
+ * Updates an existing job.
+ */
+async function updateJob(jobId, jobData) {
+    if (supabaseClient) {
+        const { error } = await supabaseClient.from('jobs').update(jobData).eq('id', jobId);
+        if (error) throw error;
+    } else {
+        const existing = Storage.get(CONFIG.storage.jobsKey) || [];
+        const index = existing.findIndex(j => j.id === jobId);
+        if (index > -1) {
+            existing[index] = {
+                ...existing[index],
+                title: jobData.title,
+                start: jobData.start_time,
+                type: jobData.job_type,
+                notes: jobData.notes,
+                phone: jobData.client_phone,
+                address: jobData.address,
+                price: jobData.price
+            };
+            Storage.set(CONFIG.storage.jobsKey, existing);
+        }
+    }
+}
 
+/**
+ * Marks a job as complete.
+ */
+window.markJobAsDone = async function () {
+    if (!currentEventId) return;
+    if (!confirm('Mark this job as DONE?')) return;
 
-    // --- BROWSER COMPATIBILITY CHECK ---
-    if (window.location.protocol === 'file:') {
-        console.warn('⚠️ RUNNING VIA FILE PROTOCOL');
-        console.warn('Some browsers (Safari, Firefox) restrict features like Fetch/Supabase or LocalStorage access from local files.');
-        console.warn('Recommendation: Run "npx serve" in this directory for best results.');
+    try {
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('jobs')
+                .update({ status: 'done' })
+                .eq('id', currentEventId);
+            if (error) throw error;
+        } else {
+            const existing = Storage.get(CONFIG.storage.jobsKey) || [];
+            const index = existing.findIndex(j => j.id === currentEventId);
+            if (index > -1) {
+                existing[index].status = 'done';
+                existing[index].classNames = getEventClasses(existing[index].type, 'done', existing[index].is_recurring);
+                Storage.set(CONFIG.storage.jobsKey, existing);
+            }
+        }
+
+        safeRefetchCalendar();
+        closeJobDetails();
+    } catch (error) {
+        console.error('Mark done error:', error);
+        alert('Error updating: ' + (error?.message || 'Unknown error'));
+    }
+};
+
+// ============================================================
+// Job Cancellation
+// ============================================================
+
+window.cancelJob = async function () {
+    if (!currentEventId) return;
+
+    let event = null;
+    try {
+        event = calendar?.getEventById(currentEventId);
+    } catch (e) {
+        console.warn('Could not get event by ID:', e);
     }
 
-    var calendarEl = document.getElementById('calendar');
+    if (!event) {
+        // Fallback: just cancel the single job by ID
+        if (!confirm('Cancel this job?')) return;
+        try {
+            await cancelSingleJob(currentEventId);
+            safeRefetchCalendar();
+            closeJobDetails();
+        } catch (error) {
+            console.error('Cancel error:', error);
+            alert('Error cancelling: ' + (error?.message || 'Unknown error'));
+        }
+        return;
+    }
 
-    if (typeof FullCalendar === 'undefined') {
-        console.error('FullCalendar SDK not loaded!');
+    const isRecurring = event.extendedProps?.is_recurring;
+    const recurringId = event.extendedProps?.recurring_id;
+    const currentDate = event.start ? new Date(event.start) : new Date();
+
+    try {
+        if (isRecurring && recurringId) {
+            await handleRecurringCancellation(recurringId, currentDate);
+        } else {
+            if (!confirm('Cancel this job? It will remain on calendar but marked as cancelled.')) return;
+            await cancelSingleJob(currentEventId);
+        }
+
+        safeRefetchCalendar();
+        closeJobDetails();
+    } catch (error) {
+        console.error('Cancel error:', error);
+        alert('Error cancelling: ' + (error?.message || 'Unknown error'));
+    }
+};
+
+async function handleRecurringCancellation(recurringId, fromDate) {
+    const firstChoice = confirm(
+        '🔁 This is a RECURRING job.\n\n' +
+        'Click OK → See more options\n' +
+        'Click CANCEL → Cancel ONLY this single job'
+    );
+
+    if (!firstChoice) {
+        await cancelSingleJob(currentEventId);
+        return;
+    }
+
+    const secondChoice = confirm(
+        'Choose cancellation scope:\n\n' +
+        'Click OK → Cancel ALL jobs in entire series\n' +
+        'Click CANCEL → Cancel this + future jobs only'
+    );
+
+    if (secondChoice) {
+        await cancelEntireSeries(recurringId);
+    } else {
+        await cancelFutureJobs(recurringId, fromDate);
+    }
+}
+
+async function cancelSingleJob(jobId) {
+    if (supabaseClient) {
+        const { error } = await supabaseClient.from('jobs')
+            .update({ status: 'cancelled' })
+            .eq('id', jobId);
+        if (error) throw error;
+    } else {
+        const existing = Storage.get(CONFIG.storage.jobsKey) || [];
+        const index = existing.findIndex(j => j.id === jobId);
+        if (index > -1) {
+            existing[index].status = 'cancelled';
+            existing[index].classNames = getEventClasses(existing[index].type, 'cancelled', existing[index].is_recurring);
+            Storage.set(CONFIG.storage.jobsKey, existing);
+        }
+    }
+}
+
+async function cancelFutureJobs(recurringId, fromDate) {
+    if (supabaseClient) {
+        const { data: jobs } = await supabaseClient.from('jobs')
+            .select('*')
+            .eq('recurring_id', recurringId)
+            .gte('start_time', fromDate.toISOString());
+
+        for (const job of jobs || []) {
+            await supabaseClient.from('jobs').update({ status: 'cancelled' }).eq('id', job.id);
+        }
+        alert(`Cancelled ${jobs?.length || 0} future job(s).`);
+    } else {
+        const existing = Storage.get(CONFIG.storage.jobsKey) || [];
+        let count = 0;
+        existing.forEach(job => {
+            if (job.recurring_id === recurringId && new Date(job.start) >= fromDate) {
+                job.status = 'cancelled';
+                job.classNames = getEventClasses(job.type, 'cancelled', job.is_recurring);
+                count++;
+            }
+        });
+        Storage.set(CONFIG.storage.jobsKey, existing);
+        alert(`Cancelled ${count} future job(s).`);
+    }
+}
+
+async function cancelEntireSeries(recurringId) {
+    if (supabaseClient) {
+        const { data: jobs } = await supabaseClient.from('jobs')
+            .select('*')
+            .eq('recurring_id', recurringId);
+
+        for (const job of jobs || []) {
+            await supabaseClient.from('jobs').update({ status: 'cancelled' }).eq('id', job.id);
+        }
+        alert(`Cancelled ALL ${jobs?.length || 0} job(s) in series!`);
+    } else {
+        const existing = Storage.get(CONFIG.storage.jobsKey) || [];
+        let count = 0;
+        existing.forEach(job => {
+            if (job.recurring_id === recurringId) {
+                job.status = 'cancelled';
+                job.classNames = getEventClasses(job.type, 'cancelled', job.is_recurring);
+                count++;
+            }
+        });
+        Storage.set(CONFIG.storage.jobsKey, existing);
+        alert(`Cancelled ALL ${count} job(s) in series!`);
+    }
+}
+
+// ============================================================
+// UI Functions
+// ============================================================
+
+window.selectJobType = function (type) {
+    selectedJobType = type;
+    document.querySelectorAll('.btn-big-type').forEach(btn => btn.classList.remove('selected'));
+    document.querySelector(`.btn-big-type.${type}`)?.classList.add('selected');
+};
+
+window.toggleRecurringOptions = function () {
+    const checkbox = document.getElementById('wizard-recurring');
+    const options = document.getElementById('recurring-options');
+    if (checkbox && options) {
+        options.classList.toggle('hidden', !checkbox.checked);
+    }
+};
+
+window.editJob = function () {
+    if (!currentEventId) {
+        alert('No job selected to edit.');
+        return;
+    }
+
+    let event = null;
+    try {
+        event = calendar?.getEventById(currentEventId);
+    } catch (e) {
+        console.warn('Could not get event for editing:', e);
+    }
+
+    if (!event) {
+        alert('Could not load job details for editing.');
         return;
     }
 
     try {
-        console.log('Initializing Calendar...');
-        var calendar = new FullCalendar.Calendar(calendarEl, {
+        isEditMode = true;
+
+        const titleEl = document.getElementById('wizard-title');
+        if (titleEl) titleEl.textContent = 'Edit Job';
+
+        const clientEl = document.getElementById('wizard-client');
+        if (clientEl) clientEl.value = (event.title || '').split(' - ')[0];
+
+        const phoneEl = document.getElementById('wizard-phone');
+        if (phoneEl) phoneEl.value = event.extendedProps?.phone || '';
+
+        const addressEl = document.getElementById('wizard-address');
+        if (addressEl) addressEl.value = event.extendedProps?.address || '';
+
+        const priceEl = document.getElementById('wizard-price');
+        if (priceEl) priceEl.value = event.extendedProps?.price || '';
+
+        const dateEl = document.getElementById('wizard-date');
+        if (dateEl && event.start) {
+            try {
+                dateEl.value = new Date(event.start).toISOString().slice(0, 16);
+            } catch (e) {
+                console.warn('Date parsing error:', e);
+                dateEl.value = '';
+            }
+        }
+
+        const notesEl = document.getElementById('wizard-notes');
+        if (notesEl) notesEl.value = event.extendedProps?.notes || '';
+
+        selectedJobType = event.extendedProps?.type || 'mowing';
+        document.querySelectorAll('.btn-big-type').forEach(btn => btn.classList.remove('selected'));
+        document.querySelector(`.btn-big-type.${selectedJobType}`)?.classList.add('selected');
+
+        const recurringCheckbox = document.getElementById('wizard-recurring');
+        if (recurringCheckbox) {
+            recurringCheckbox.checked = false;
+            recurringCheckbox.disabled = true;
+        }
+
+        const recurringOptions = document.getElementById('recurring-options');
+        if (recurringOptions) recurringOptions.classList.add('hidden');
+
+        closeJobDetails();
+
+        const wizardOverlay = document.getElementById('wizard-overlay');
+        if (wizardOverlay) wizardOverlay.classList.remove('hidden');
+    } catch (error) {
+        console.error('Error opening edit mode:', error);
+        alert('Error: Could not open edit form.');
+        isEditMode = false;
+    }
+};
+
+function openWizard() {
+    if (!supabaseClient && Storage.get(CONFIG.storage.jobsKey) === null) {
+        alert('NOTE: Cloud Sync not available. Data saved locally only.');
+    }
+
+    isEditMode = false;
+    selectedJobType = '';
+
+    document.getElementById('wizard-title').textContent = 'New Job';
+    document.getElementById('wizard-client').value = '';
+    document.getElementById('wizard-phone').value = '';
+    document.getElementById('wizard-address').value = '';
+    document.getElementById('wizard-price').value = '';
+    document.getElementById('wizard-date').value = '';
+    document.getElementById('wizard-notes').value = '';
+    document.getElementById('wizard-recurring').checked = false;
+    document.getElementById('wizard-recurring').disabled = false;
+    document.getElementById('recurring-options').classList.add('hidden');
+    document.querySelectorAll('.btn-big-type').forEach(btn => btn.classList.remove('selected'));
+
+    document.getElementById('wizard-overlay').classList.remove('hidden');
+}
+
+function closeWizard() {
+    document.getElementById('wizard-overlay').classList.add('hidden');
+}
+
+function openJobDetails(event) {
+    if (!event) {
+        console.error('openJobDetails called with null event');
+        return;
+    }
+
+    currentEventId = event.id;
+    currentRecurringId = event.extendedProps?.recurring_id || null;
+
+    // Title & Date (with safe access)
+    const titleEl = document.getElementById('view-job-title');
+    if (titleEl) titleEl.textContent = event.title || 'Untitled Job';
+
+    let dateStr = 'No date';
+    try {
+        if (event.start) {
+            dateStr = `${event.start.toLocaleDateString()} ${event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        }
+    } catch (e) {
+        console.warn('Date formatting error:', e);
+    }
+    const dateEl = document.getElementById('view-job-date');
+    if (dateEl) dateEl.textContent = dateStr;
+
+    // Address
+    const addressEl = document.getElementById('view-job-address');
+    const address = event.extendedProps?.address || '';
+    if (addressEl) {
+        addressEl.innerHTML = address
+            ? `<a href="https://maps.google.com/?q=${encodeURIComponent(address)}" target="_blank">${address}</a>`
+            : '--';
+    }
+
+    // Type Badge
+    const typeEl = document.getElementById('view-job-type-badge');
+    const type = event.extendedProps?.type || 'mowing';
+    let typeText = type === 'mowing' ? 'MOWING' : 'HEDGE TRIMMING';
+    if (event.extendedProps?.is_recurring) {
+        typeText += ' <span class="recurring-badge">🔁 RECURRING</span>';
+    }
+    if (typeEl) {
+        typeEl.innerHTML = typeText;
+        typeEl.className = `job-type-badge ${type === 'mowing' ? 'mowing' : 'hedge'}`;
+    }
+
+    // Notes & Price
+    const notesEl = document.getElementById('view-job-notes');
+    if (notesEl) notesEl.textContent = event.extendedProps?.notes || 'No notes.';
+
+    let price = event.extendedProps?.price;
+    if (!price && event.title) {
+        try {
+            const match = event.title.match(/\(\$(\d+(?:\.\d{2})?)\)/);
+            price = match ? match[1] : null;
+        } catch (e) {
+            console.warn('Price extraction error:', e);
+        }
+    }
+    const priceEl = document.getElementById('view-job-price');
+    if (priceEl) priceEl.textContent = price ? `$${price}` : '--';
+
+    // Phone & SMS
+    const phone = event.extendedProps?.phone || '';
+    const phoneRow = document.getElementById('view-job-phone-row');
+    const smsActions = document.querySelector('.sms-actions');
+
+    if (phone) {
+        if (phoneRow) phoneRow.classList.remove('hidden');
+        const phoneEl = document.getElementById('view-job-phone');
+        if (phoneEl) phoneEl.textContent = phone;
+        if (smsActions) smsActions.classList.remove('hidden');
+
+        const firstName = (event.title || 'Customer').split(' ')[0];
+        const remindMsg = `Hi ${firstName}, this is JLS Lawn Care. Just a reminder we'll be by tomorrow. Thanks!`;
+        const thanksMsg = `Hi ${firstName}, your lawn is done! Thanks for choosing JLS Lawn Care!`;
+
+        const smsRemindBtn = document.getElementById('btn-sms-remind');
+        const smsThanksBtn = document.getElementById('btn-sms-thanks');
+        if (smsRemindBtn) smsRemindBtn.href = `sms:${phone}?body=${encodeURIComponent(remindMsg)}`;
+        if (smsThanksBtn) smsThanksBtn.href = `sms:${phone}?body=${encodeURIComponent(thanksMsg)}`;
+    } else {
+        if (phoneRow) phoneRow.classList.add('hidden');
+        if (smsActions) smsActions.classList.add('hidden');
+    }
+
+    // Button States
+    const status = event.extendedProps?.status;
+    const markDoneBtn = document.getElementById('btn-mark-done');
+    const cancelBtn = document.getElementById('btn-cancel-job');
+    const editBtn = document.getElementById('btn-edit-job');
+
+    if (markDoneBtn) {
+        if (status === 'done') {
+            markDoneBtn.textContent = 'COMPLETED ✓';
+            markDoneBtn.classList.add('completed-state');
+            markDoneBtn.disabled = true;
+        } else {
+            markDoneBtn.textContent = 'MARK AS DONE';
+            markDoneBtn.classList.remove('completed-state');
+            markDoneBtn.disabled = false;
+        }
+    }
+
+    if (status === 'cancelled') {
+        if (cancelBtn) {
+            cancelBtn.textContent = 'CANCELLED ✕';
+            cancelBtn.classList.add('cancelled-state');
+            cancelBtn.disabled = true;
+        }
+        if (editBtn) editBtn.disabled = true;
+        if (markDoneBtn) markDoneBtn.disabled = true;
+    } else {
+        if (cancelBtn) {
+            cancelBtn.textContent = 'CANCEL JOB';
+            cancelBtn.classList.remove('cancelled-state');
+            cancelBtn.disabled = false;
+        }
+        if (editBtn) editBtn.disabled = false;
+    }
+
+    const modalEl = document.getElementById('job-details-modal');
+    if (modalEl) modalEl.classList.remove('hidden');
+}
+
+function closeJobDetails() {
+    document.getElementById('job-details-modal').classList.add('hidden');
+}
+
+window.closeJobDetails = closeJobDetails;
+
+// ============================================================
+// Calendar Initialization
+// ============================================================
+
+function initializeCalendar() {
+    const calendarEl = document.getElementById('calendar');
+
+    if (!calendarEl) {
+        console.error('Calendar element not found!');
+        showCalendarError('Calendar container not found. Please refresh the page.');
+        return null;
+    }
+
+    if (typeof FullCalendar === 'undefined') {
+        console.error('FullCalendar not loaded!');
+        showCalendarError('Calendar library failed to load. Please check your internet connection and refresh.');
+        return null;
+    }
+
+    try {
+        return new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
-            headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listWeek' },
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,listWeek'
+            },
             height: 'auto',
-            // List View Customization
             views: {
                 listWeek: {
-                    listDayFormat: { weekday: 'long', month: 'short', day: 'numeric' }, // e.g., "Wednesday, Dec 17"
-                    listDaySideFormat: false // Hide the separate day number since we have it in the main text
+                    listDayFormat: { weekday: 'long', month: 'short', day: 'numeric' },
+                    listDaySideFormat: false
                 }
             },
-            // Custom Content Renderer
-            eventContent: function (arg) {
-                // Handle "Empty Day" placeholders
-                if (arg.event.classNames.includes('job-empty-day')) {
-                    return { domNodes: [] }; // Default rendering for empty days (using CSS to hide/show)
-                }
-
-                const props = arg.event.extendedProps;
-                const price = props.price;
-                const address = props.address;
-
-                // Create Container
-                let container = document.createElement('div');
-                container.className = 'event-content';
-
-                // Title
-                let titleEl = document.createElement('div');
-                titleEl.className = 'event-title';
-                titleEl.innerText = arg.event.title;
-                container.appendChild(titleEl);
-
-                // Details Row (Price & Address)
-                if (price || address) {
-                    let detailsEl = document.createElement('div');
-                    detailsEl.className = 'event-details-row';
-
-                    if (price) {
-                        let priceEl = document.createElement('span');
-                        priceEl.className = 'event-price';
-                        priceEl.innerText = '$' + price;
-                        detailsEl.appendChild(priceEl);
+            eventContent: renderEventContent,
+            events: fetchEvents,
+            eventClick: (info) => {
+                try {
+                    info.jsEvent.preventDefault();
+                    if (info.event && !info.event.classNames?.includes('job-empty-day')) {
+                        openJobDetails(info.event);
                     }
-
-                    if (address) {
-                        let addrEl = document.createElement('span');
-                        addrEl.className = 'event-address';
-                        // Simplify address for display (e.g. "123 Main St" -> "123 Main")
-                        let shortAddr = address.split(',')[0];
-                        if (shortAddr.length > 20) shortAddr = shortAddr.substring(0, 18) + '..';
-                        addrEl.innerText = shortAddr;
-                        detailsEl.appendChild(addrEl);
-                    }
-
-                    container.appendChild(detailsEl);
+                } catch (e) {
+                    console.error('Event click error:', e);
                 }
-
-                return { domNodes: [container] };
             },
-            events: function (info, successCallback, failureCallback) {
-                // Helper to process and merge empty days
-                const processEvents = (realEvents) => {
-                    const events = [...realEvents];
-
-                    // Only generate empty days if we are in a List view (or generally, to support list view)
-                    // We'll generate them for the requested range.
-                    let current = new Date(info.start);
-                    const end = new Date(info.end);
-
-                    // create a lookup for days that have jobs
-                    const daysWithJobs = new Set();
-                    events.forEach(e => {
-                        const start = new Date(e.start);
-                        daysWithJobs.add(start.toDateString());
-                    });
-
-                    while (current < end) {
-                        // Check if this day has a job
-                        // Note: This simple check assumes jobs are single-day. 
-                        // For multi-day, we'd need more complex overlap logic, but for lawn care, single day is safe assumption.
-                        if (!daysWithJobs.has(current.toDateString())) {
-                            events.push({
-                                title: 'No Jobs',
-                                start: new Date(current), // Copy date
-                                allDay: true,
-                                classNames: ['job-empty-day'] // CSS will hide this in Month view
-                            });
-                        }
-                        current.setDate(current.getDate() + 1);
-                    }
-                    successCallback(events);
-                };
-
-                if (!supabase) {
-                    // Fallback for demo/testing without keys
-                    console.warn('Supabase not configured. Using local dummy data.');
-                    const localJobs = safeStorage.get('jls_local_jobs') || [];
-                    processEvents(localJobs);
-                    return;
+            windowResize: () => {
+                try {
+                    if (calendar) calendar.changeView('dayGridMonth');
+                } catch (e) {
+                    console.warn('Window resize handler error:', e);
                 }
-
-                // Fetch from Supabase
-                supabase.from('jobs').select('*')
-                    .then(({ data, error }) => {
-                        if (error) {
-                            console.error('Error fetching jobs:', error);
-                            failureCallback(error);
-                        } else {
-                            // Map Supabase data to FullCalendar event objects
-                            const mappedEvents = data.map(job => ({
-                                id: job.id,
-                                title: job.title,
-                                start: job.start_time, // Assuming 'start_time' column
-                                type: job.job_type,    // Assuming 'job_type' column
-                                notes: job.notes,
-                                status: job.status,
-                                price: job.price,      // New dedicated column
-                                address: job.address,  // New dedicated column
-                                classNames: getEventClassNames(job.job_type, job.status)
-                            }));
-                            processEvents(mappedEvents);
-                        }
-                    });
-            },
-            eventClick: function (info) {
-                info.jsEvent.preventDefault(); // Prevent URL navigation
-                // Don't open details for "Empty Day" placeholders
-                if (info.event.classNames.includes('job-empty-day')) return;
-                openJobDetails(info.event);
-            },
-            windowResize: function (view) {
-                // Keep the format consistent (DayGrid) regardless of size
-                calendar.changeView('dayGridMonth');
             }
         });
-
-        calendar.render();
-
-        // Helper to style events
-        function getEventClassNames(type, status) {
-            let classes = [];
-            if (type === 'mowing') classes.push('job-mowing');
-            else if (type === 'hedge') classes.push('job-hedge');
-
-            if (status === 'done') classes.push('job-completed');
-            return classes;
-        }
-
-        // --- Modal Logic ---
-
-        // Elements
-        const fab = document.getElementById('fab-add-job');
-        const overlay = document.getElementById('wizard-overlay');
-        const closeBtn = document.getElementById('wizard-close');
-
-        const detailsOverlay = document.getElementById('job-details-modal');
-        const detailsCloseBtn = document.getElementById('view-job-close');
-        const markDoneBtn = document.getElementById('btn-mark-done');
-
-        let currentEventId = null;
-
-        // Selection State
-        let selectedType = '';
-
-        window.selectJobType = function (type) {
-            selectedType = type;
-            document.querySelectorAll('.btn-big-type').forEach(btn => btn.classList.remove('selected'));
-            document.querySelector(`.btn-big-type.${type}`).classList.add('selected');
-        };
-
-        window.saveJob = async function () {
-            const client = document.getElementById('wizard-client').value;
-            const phone = document.getElementById('wizard-phone').value;
-            const address = document.getElementById('wizard-address').value;
-            const priceVal = document.getElementById('wizard-price').value;
-            const dateVal = document.getElementById('wizard-date').value;
-            const notes = document.getElementById('wizard-notes').value;
-
-            if (!client) { alert('Please enter client name!'); return; }
-            if (!selectedType) { alert('Please select a job type!'); return; }
-            if (!dateVal) { alert('Please pick a date!'); return; }
-
-            let eventTitle = client;
-            // Legacy: We NO LONGER append price to title for new jobs
-            // if (priceVal) { eventTitle += ` ($${priceVal})`; }
-
-            let displayType = selectedType === 'mowing' ? 'Mowing' : 'Hedge Trimming';
-            if (!eventTitle.toLowerCase().includes(displayType.toLowerCase())) {
-                eventTitle += ` - ${displayType}`;
-            }
-
-            const newJob = {
-                title: eventTitle,
-                start_time: dateVal, // DB column: start_time
-                job_type: selectedType, // DB column: job_type
-                notes: notes,
-                price: priceVal || null, // DB column: price
-                address: address, // DB column: address
-                client_phone: phone, // New field, assuming DB column 'client_phone' or 'phone' exists or ignored if not
-                status: 'pending'
-            };
-
-            if (supabase) {
-                const { data, error } = await supabase.from('jobs').insert([newJob]).select();
-                if (error) {
-                    alert('Error saving to cloud: ' + error.message);
-                    return;
-                }
-            } else {
-                // Local Fallback
-                newJob.id = Date.now().toString(); // Fake ID
-                newJob.classNames = getEventClassNames(newJob.job_type, newJob.status);
-                // Must map back to FC format (start instead of start_time)
-                const localJobFC = {
-                    id: newJob.id,
-                    title: newJob.title,
-                    start: newJob.start_time,
-                    type: newJob.job_type,
-                    notes: newJob.notes,
-                    phone: newJob.client_phone,
-                    status: newJob.status,
-                    price: newJob.price,
-                    address: newJob.address,
-                    classNames: newJob.classNames
-                };
-
-                const existing = safeStorage.get('jls_local_jobs') || [];
-                existing.push(localJobFC);
-                safeStorage.set('jls_local_jobs', existing);
-            }
-
-            calendar.refetchEvents(); // Refresh calendar
-            alert('Job Scheduled!');
-            closeWizard();
-        };
-
-        function openJobDetails(event) {
-            currentEventId = event.id;
-
-            document.getElementById('view-job-title').innerText = event.title;
-
-            const dateObj = event.start;
-            const dateStr = dateObj ? (dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : 'No date';
-            document.getElementById('view-job-date').innerText = dateStr;
-
-            // Address Logic
-            const addressEl = document.getElementById('view-job-address');
-            const address = event.extendedProps.address;
-            if (address) {
-                addressEl.innerHTML = `<a href="https://maps.google.com/?q=${encodeURIComponent(address)}" target="_blank">${address}</a>`;
-            } else {
-                addressEl.innerText = '--';
-            }
-
-            const typeEl = document.getElementById('view-job-type-badge');
-            const type = event.extendedProps.type;
-            typeEl.innerText = type === 'mowing' ? 'MOWING' : 'HEDGE TRIMMING';
-            typeEl.className = 'job-type-badge ' + (type === 'mowing' ? 'mowing' : 'hedge');
-
-            const notes = event.extendedProps.notes || 'No notes.';
-            document.getElementById('view-job-notes').innerText = notes;
-
-            // Price Logic: Check dedicated column first, then fallback to Title Regex
-            const priceEl = document.getElementById('view-job-price');
-            let priceVal = event.extendedProps.price;
-
-            if (!priceVal) {
-                // BACKWARD COMPATIBILITY: Check title for ($50)
-                const priceMatch = event.title.match(/\(\$(\d+(?:\.\d{2})?)\)/);
-                priceVal = priceMatch ? priceMatch[1] : null;
-            }
-
-            if (priceVal) {
-                priceEl.innerText = '$' + priceVal;
-            } else {
-                priceEl.innerText = '--';
-            }
-
-            // Phone & SMS Buttons
-            const phone = event.extendedProps.phone || ''; // FullCalendar puts extra props here
-            const phoneRow = document.getElementById('view-job-phone-row');
-            const phoneEl = document.getElementById('view-job-phone');
-            const smsContainer = document.querySelector('.sms-actions');
-            const btnRemind = document.getElementById('btn-sms-remind');
-            const btnThanks = document.getElementById('btn-sms-thanks');
-
-            if (phone) {
-                phoneRow.classList.remove('hidden');
-                phoneEl.innerText = phone;
-                smsContainer.classList.remove('hidden');
-
-                const firstName = event.title.split(' ')[0]; // Simple name extraction
-
-                // Cross-platform SMS Link Generator
-                // Uses '?' which is the standard separator (iOS 8+, Android).
-                const getSMSLink = (p, b) => {
-                    const ua = navigator.userAgent.toLowerCase();
-                    // specific old iOS check if needed, but modern iOS handles ? fine.
-                    return `sms:${p}?body=${encodeURIComponent(b)}`;
-                };
-
-                // Reminder Text
-                const remindMsg = `Hi ${firstName}, this is JLS Lawn Care. Just a reminder that we'll be by tomorrow for your service. Thanks!`;
-                btnRemind.href = getSMSLink(phone, remindMsg);
-
-                // Thank You Text
-                const thanksMsg = `Hi ${firstName}, your lawn is all done! Thanks for choosing JLS Lawn Care. See you next time!`;
-                btnThanks.href = getSMSLink(phone, thanksMsg);
-
-            } else {
-                phoneRow.classList.add('hidden');
-                smsContainer.classList.add('hidden');
-            }
-
-            // Update Button State
-            if (event.extendedProps.status === 'done') {
-                markDoneBtn.innerText = 'COMPLETED ✓';
-                markDoneBtn.classList.add('completed-state');
-                markDoneBtn.disabled = true;
-            } else {
-                markDoneBtn.innerText = 'MARK AS DONE';
-                markDoneBtn.classList.remove('completed-state');
-                markDoneBtn.disabled = false;
-            }
-
-            detailsOverlay.classList.remove('hidden');
-        }
-
-        window.markJobAsDone = async function () {
-            if (!currentEventId) return;
-
-            if (confirm('Mark this job as DONE?')) {
-                if (supabase) {
-                    const { error } = await supabase.from('jobs')
-                        .update({ status: 'done' })
-                        .eq('id', currentEventId);
-
-                    if (error) {
-                        alert('Error updating: ' + error.message);
-                        return;
-                    }
-                } else {
-                    // Local Fallback
-                    const existing = JSON.parse(localStorage.getItem('jls_local_jobs')) || [];
-                    const jobIndex = existing.findIndex(j => j.id === currentEventId);
-                    if (jobIndex > -1) {
-                        existing[jobIndex].status = 'done';
-                        // Update classNames for next fetch
-                        existing[jobIndex].classNames = getEventClassNames(existing[jobIndex].type, 'done');
-                        safeStorage.set('jls_local_jobs', existing);
-                    }
-                }
-
-                calendar.refetchEvents();
-                window.closeJobDetails();
-            }
-        };
-
-        function openWizard() {
-            if (!supabase && safeStorage.get('jls_local_jobs') === null) {
-                alert('NOTE: Cloud Sync is NOT setup. Data will only be saved on this device (LocalStorage).');
-            }
-            overlay.classList.remove('hidden');
-            document.getElementById('wizard-client').value = '';
-            document.getElementById('wizard-client').value = '';
-            document.getElementById('wizard-client').value = '';
-            document.getElementById('wizard-phone').value = '';
-            document.getElementById('wizard-address').value = '';
-            document.getElementById('wizard-price').value = '';
-            document.getElementById('wizard-date').value = '';
-            document.getElementById('wizard-notes').value = '';
-            selectedType = '';
-            document.querySelectorAll('.btn-big-type').forEach(btn => btn.classList.remove('selected'));
-        }
-
-        function closeWizard() {
-            overlay.classList.add('hidden');
-        }
-
-        window.closeJobDetails = function () {
-            detailsOverlay.classList.add('hidden');
-        };
-
-        if (fab) fab.addEventListener('click', openWizard);
-        if (closeBtn) closeBtn.addEventListener('click', closeWizard);
-        if (detailsCloseBtn) detailsCloseBtn.addEventListener('click', window.closeJobDetails);
-
-        overlay.addEventListener('click', function (e) {
-            if (e.target === overlay) closeWizard();
-        });
-        detailsOverlay.addEventListener('click', function (e) {
-            if (e.target === detailsOverlay) window.closeJobDetails();
-        });
-    } catch (e) {
-        console.error('CRITICAL CALENDAR INIT ERROR:', e);
-        alert('CALENDAR CRASHED: ' + e.message);
+    } catch (error) {
+        console.error('Calendar initialization error:', error);
+        showCalendarError('Failed to initialize calendar. Please refresh the page.');
+        return null;
     }
+}
+
+/**
+ * Shows an error message in the calendar container
+ */
+function showCalendarError(message) {
+    const calendarEl = document.getElementById('calendar');
+    if (calendarEl) {
+        calendarEl.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; gap: 16px; color: #ef4444; text-align: center; padding: 24px;">
+                <span style="font-size: 3rem;">⚠️</span>
+                <p style="font-size: 1.1rem; font-weight: 600;">${message}</p>
+                <button onclick="location.reload()" style="padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Refresh Page</button>
+            </div>
+        `;
+    }
+}
+
+// ============================================================
+// Application Bootstrap
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', async function () {
+    // Environment check
+    if (window.location.protocol === 'file:') {
+        console.warn('⚠️ Running via file:// protocol. Some features may be limited.');
+    }
+
+    // Initialize Supabase
+    await initializeSupabase();
+
+    // Initialize Calendar
+    calendar = initializeCalendar();
+    if (calendar) {
+        calendar.render();
+        console.log('✅ Calendar initialized');
+    }
+
+    // Setup Event Listeners
+    const fab = document.getElementById('fab-add-job');
+    const wizardOverlay = document.getElementById('wizard-overlay');
+    const detailsOverlay = document.getElementById('job-details-modal');
+
+    fab?.addEventListener('click', openWizard);
+    document.getElementById('wizard-close')?.addEventListener('click', closeWizard);
+    document.getElementById('view-job-close')?.addEventListener('click', closeJobDetails);
+
+    // Close modals on backdrop click
+    wizardOverlay?.addEventListener('click', (e) => {
+        if (e.target === wizardOverlay) closeWizard();
+    });
+    detailsOverlay?.addEventListener('click', (e) => {
+        if (e.target === detailsOverlay) closeJobDetails();
+    });
 });
 
-// --- SAFE STORAGE WRAPPER ---
-// Wraps LocalStorage to prevent crashes in private mode or restricted browsers
-const safeStorage = {
-    get: function (key) {
-        try {
-            return JSON.parse(localStorage.getItem(key));
-        } catch (e) {
-            console.error('Storage Read Error', e);
-            return null;
-        }
-    },
-    set: function (key, value) {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-        } catch (e) {
-            alert('WARNING: Could not save to local device storage. Private mode?');
-            console.error('Storage Write Error', e);
-        }
+// ============================================================
+// Toast Notification System
+// ============================================================
+
+/**
+ * Displays a toast notification to the user.
+ * @param {string} message - The message to display
+ * @param {string} type - 'success', 'error', 'warning', or 'info'
+ * @param {number} duration - How long to show the toast (ms)
+ */
+function showToast(message, type = 'info', duration = 3500) {
+    // Remove any existing toast
+    const existingToast = document.querySelector('.toast-notification');
+    if (existingToast) existingToast.remove();
+
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+
+    const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+    };
+
+    toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || icons.info}</span>
+        <span class="toast-message">${message}</span>
+    `;
+
+    document.body.appendChild(toast);
+
+    // Trigger reflow for animation
+    toast.offsetHeight;
+    toast.classList.add('toast-visible');
+
+    setTimeout(() => {
+        toast.classList.remove('toast-visible');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+// Override window.alert to use toast system
+window.originalAlert = window.alert;
+window.alert = function (msg) {
+    console.log('Alert:', msg);
+
+    // Determine toast type based on message content
+    let type = 'info';
+    const msgLower = (msg || '').toLowerCase();
+
+    if (msgLower.includes('error') || msgLower.includes('failed') || msgLower.includes('could not')) {
+        type = 'error';
+    } else if (msgLower.includes('warning') || msgLower.includes('note:')) {
+        type = 'warning';
+    } else if (msgLower.includes('scheduled') || msgLower.includes('updated') ||
+        msgLower.includes('done') || msgLower.includes('cancelled') ||
+        msgLower.includes('success') || msgLower.includes('completed')) {
+        type = 'success';
     }
+
+    showToast(msg, type);
 };

@@ -7,6 +7,7 @@
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="JLS Lawn Maintenance Command Center - Schedule and manage lawn care jobs.">
     <title>JLS Lawn Maintenance Command Center</title>
 
     <!-- Fonts -->
@@ -14,92 +15,90 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <!-- FullCalendar (Local) -->
+    <!-- FullCalendar -->
     <script src="fullcalendar.min.js"></script>
 
-    <!-- Custom Styles -->
+    <!-- Styles -->
     <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 
 <body>
     <header class="app-header">
-
         <h1>JLS Maintenance Job Tracker</h1>
     </header>
 
     <main>
-        <div id='calendar'></div>
-
-        <!-- Floating Action Button -->
+        <div id="calendar"></div>
         <button id="fab-add-job" class="fab-btn" aria-label="Add New Job">+</button>
 
-        <!-- Ghost/Overlay for Wizard -->
+        <!-- New Job Wizard -->
         <div id="wizard-overlay" class="wizard-overlay hidden">
             <div class="wizard-card">
                 <div class="wizard-header">
                     <h2 id="wizard-title">New Job</h2>
                     <span id="wizard-close" class="close-btn">&times;</span>
                 </div>
-
-                <!-- Single View Form -->
                 <div class="wizard-form-stack">
-
-                    <!-- Client Name -->
                     <div class="form-group-large">
                         <label for="wizard-client">Who is the Client?</label>
                         <input type="text" id="wizard-client" placeholder="e.g. Smith Residence">
                     </div>
-
-                    <!-- Client Phone -->
                     <div class="form-group-large">
                         <label for="wizard-phone">Phone Number (Optional)</label>
                         <input type="tel" id="wizard-phone" placeholder="e.g. 555-123-4567" inputmode="tel">
                     </div>
-
-                    <!-- Address -->
                     <div class="form-group-large">
                         <label for="wizard-address">Address</label>
                         <input type="text" id="wizard-address" placeholder="e.g. 123 Main St">
                     </div>
-
-                    <!-- Job Type -->
                     <div class="form-group-large">
                         <label>What's the Job?</label>
                         <div class="job-type-selection">
-                            <button class="btn-big-type mowing" onclick="selectJobType('mowing')">
-                                🌱 MOWING
-                            </button>
-                            <button class="btn-big-type hedge" onclick="selectJobType('hedge')">
-                                ✂️ HEDGE
-                            </button>
+                            <button type="button" class="btn-big-type mowing" onclick="selectJobType('mowing')">🌱
+                                MOWING</button>
+                            <button type="button" class="btn-big-type hedge" onclick="selectJobType('hedge')">✂️
+                                HEDGE</button>
                         </div>
                     </div>
-
-                    <!-- Price -->
                     <div class="form-group-large">
                         <label for="wizard-price">Price ($)</label>
                         <input type="number" id="wizard-price" placeholder="e.g. 50" inputmode="decimal">
                     </div>
-
-                    <!-- Date & Time -->
                     <div class="form-group-large">
                         <label for="wizard-date">When?</label>
                         <input type="datetime-local" id="wizard-date">
                     </div>
-
-                    <!-- Notes -->
                     <div class="form-group-large">
                         <label for="wizard-notes">Notes (Optional)</label>
-                        <textarea id="wizard-notes" placeholder="e.g. Gate code is 1234, Watch out for dog"></textarea>
+                        <textarea id="wizard-notes" placeholder="e.g. Gate code is 1234"></textarea>
                     </div>
-
-                    <!-- Actions -->
+                    <div class="form-group-large">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="wizard-recurring" onchange="toggleRecurringOptions()">
+                            <span>🔁 Make this a recurring job</span>
+                        </label>
+                    </div>
+                    <div id="recurring-options" class="recurring-options hidden">
+                        <div class="form-group-large">
+                            <label for="wizard-frequency">How Often?</label>
+                            <select id="wizard-frequency">
+                                <option value="weekly">Weekly (Every 7 days)</option>
+                                <option value="biweekly">Bi-weekly (Every 14 days)</option>
+                                <option value="monthly">Monthly (Every 30 days)</option>
+                            </select>
+                        </div>
+                        <div class="form-group-large">
+                            <label for="wizard-occurrences">Number of Jobs</label>
+                            <input type="number" id="wizard-occurrences" min="2" max="52" value="8">
+                            <small class="field-hint">Creates this many jobs in advance</small>
+                        </div>
+                    </div>
                     <div class="wizard-actions right-align">
-                        <button class="btn-save" onclick="saveJob()">SCHEDULE JOB</button>
+                        <button type="button" class="btn-save" onclick="saveJob()">SCHEDULE JOB</button>
                     </div>
                 </div>
-            </div> <!-- Close wizard-card -->
-        </div> <!-- Close wizard-overlay -->
+            </div>
+        </div>
 
         <!-- Job Details Modal -->
         <div id="job-details-modal" class="wizard-overlay hidden">
@@ -108,50 +107,32 @@
                     <span id="view-job-close" class="close-btn">&times;</span>
                     <h2 id="view-job-title">Job Details</h2>
                 </div>
-
                 <div class="job-details-content">
                     <div id="view-job-type-badge" class="job-type-badge">MOWING</div>
-
-                    <div class="detail-row">
-                        <strong>When:</strong>
-                        <span id="view-job-date">...</span>
-                    </div>
-
-                    <div class="detail-row">
-                        <strong>Address:</strong>
-                        <span id="view-job-address">...</span>
-                    </div>
-
-                    <div class="detail-row">
-                        <strong>Price:</strong>
-                        <span id="view-job-price">...</span>
-                    </div>
-
-                    <div class="detail-row" id="view-job-phone-row">
-                        <strong>Phone:</strong>
-                        <span id="view-job-phone">...</span>
-                    </div>
-
-                    <!-- SMS Actions -->
+                    <div class="detail-row"><strong>When:</strong> <span id="view-job-date">...</span></div>
+                    <div class="detail-row"><strong>Address:</strong> <span id="view-job-address">...</span></div>
+                    <div class="detail-row"><strong>Price:</strong> <span id="view-job-price">...</span></div>
+                    <div class="detail-row" id="view-job-phone-row"><strong>Phone:</strong> <span
+                            id="view-job-phone">...</span></div>
                     <div class="sms-actions">
                         <a id="btn-sms-remind" href="#" class="btn-sms remind">📲 Remind</a>
                         <a id="btn-sms-thanks" href="#" class="btn-sms thanks">⭐ Thank You</a>
                     </div>
-
-                    <div class="detail-row">
-                        <strong>Notes:</strong>
+                    <div class="detail-row"><strong>Notes:</strong>
                         <p id="view-job-notes" class="notes-box">No notes.</p>
                     </div>
                 </div>
-                <div class="wizard-actions right-align">
-                    <button id="btn-mark-done" class="btn-complete" onclick="markJobAsDone()">MARK AS
+                <div class="wizard-actions">
+                    <button id="btn-cancel-job" type="button" class="btn-cancel" onclick="cancelJob()">CANCEL
+                        JOB</button>
+                    <button id="btn-edit-job" type="button" class="btn-edit" onclick="editJob()">EDIT</button>
+                    <button id="btn-mark-done" type="button" class="btn-complete" onclick="markJobAsDone()">MARK AS
                         DONE</button>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- App Logic -->
     <script src="script.js"></script>
 </body>
 
