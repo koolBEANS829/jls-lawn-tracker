@@ -58,7 +58,8 @@ main {
     padding: 0.5rem;
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    min-height: 80vh;
+    min-height: 80vh; /* Fallback */
+    min-height: 80dvh; /* Modern mobile browsers */
     position: relative;
     z-index: 0;
     overflow: hidden;
@@ -106,7 +107,6 @@ main {
 }
 
 .job-hedge {
-    background-color: var(--hedge-color) !important;
     background-color: var(--hedge-color) !important;
     border-left: 5px solid #bf360c !important;
 }
@@ -186,7 +186,35 @@ main {
     font-style: italic;
     font-weight: 400 !important;
     text-transform: none;
-    /* Reset uppercase if set globally */
+}
+
+/* Custom List View Helpers */
+.fc-list-day-cushion {
+    background-color: #f0f0f0 !important;
+}
+
+.fc-list-day-text {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #333;
+    text-transform: uppercase;
+}
+
+.fc-list-day-side-text {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--primary-color);
+}
+
+/* Highlight Today in List View */
+.fc-day-today .fc-list-day-cushion {
+    background-color: #fffde7 !important;
+    /* Light Yellow */
+    border-left: 5px solid #ffd600 !important;
+}
+
+.fc-day-today .fc-list-day-text {
+    color: #000;
 }
 
 /* --- Job Entry Form --- */
@@ -247,61 +275,6 @@ label {
 
 .job-completed .fc-event-title::before {
     content: "✓ ";
-}
-
-/* --- Lock Screen --- */
-#login-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: var(--primary-color);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-}
-
-.login-card {
-    background: white;
-    padding: 2rem;
-    border-radius: 12px;
-    text-align: center;
-    width: 90%;
-    max-width: 320px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-}
-
-.login-card h1 {
-    color: var(--primary-color);
-    margin-bottom: 0.5rem;
-}
-
-.login-card p {
-    color: #666;
-    margin-bottom: 1.5rem;
-    font-size: 1.1rem;
-    font-weight: 600;
-}
-
-#pin-input {
-    font-size: 2rem;
-    letter-spacing: 0.5rem;
-    text-align: center;
-    margin-bottom: 1.5rem;
-}
-
-.btn-unlock {
-    width: 100%;
-    padding: 1rem;
-    background-color: var(--primary-color);
-    color: white;
-    font-size: 1.2rem;
-    font-weight: 800;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
 }
 
 /* Big Inputs for Dad Mode */
@@ -402,7 +375,13 @@ textarea:focus {
     background-color: var(--white);
     width: 90%;
     max-width: 500px;
-    padding: 2rem;
+    max-height: 85vh;
+    /* Limit height */
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    padding-bottom: 2rem;
+    /* Extra padding at bottom */
     border-radius: 12px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
     animation: slideUp 0.3s ease-out;
@@ -442,6 +421,20 @@ textarea:focus {
 }
 
 /* Wizard Steps */
+.wizard-form-stack {
+    overflow-y: auto;
+    /* Enable scrolling */
+    padding-right: 0.5rem;
+    /* Avoid scrollbar overlap */
+    flex-grow: 1;
+}
+
+.job-details-content {
+    overflow-y: auto;
+    /* Enable scrolling for details too */
+    flex-grow: 1;
+}
+
 .form-group-large {
     margin-bottom: 1.5rem;
 }

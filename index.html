@@ -3,7 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>JLS Lawn Maintenance Command Center</title>
 
     <!-- Fonts -->
@@ -11,24 +14,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <!-- FullCalendar -->
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <!-- FullCalendar (Local) -->
+    <script src="fullcalendar.min.js"></script>
 
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 
 <body>
-    <!-- Login Overlay -->
-    <div id="login-overlay">
-        <div class="login-card">
-            <h1>🔒 LOCKED</h1>
-            <p>Enter Crew PIN</p>
-            <input type="tel" id="pin-input" maxlength="4" placeholder="____">
-            <button class="btn-unlock" onclick="checkPin()">UNLOCK</button>
-        </div>
-    </div>
-
     <header class="app-header">
 
         <h1>JLS Maintenance Job Tracker</h1>
@@ -159,7 +152,6 @@
     </main>
 
     <!-- App Logic -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
 </body>
 
