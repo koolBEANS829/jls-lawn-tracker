@@ -139,6 +139,75 @@ body {
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+/* Mobile Calendar Controls in Header */
+.mobile-calendar-controls {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: relative;
+}
+
+.mobile-nav-btn {
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 1.5rem;
+    font-weight: 700;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.mobile-nav-btn:hover,
+.mobile-nav-btn:active {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+.mobile-title-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+#mobile-calendar-title {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.mobile-today-btn {
+    padding: 4px 12px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    background: transparent;
+    color: white;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.mobile-today-btn:hover,
+.mobile-today-btn:active {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 640px) {
+    .desktop-title {
+        display: none;
+    }
+
+    .mobile-calendar-controls {
+        display: flex;
+    }
+}
+
 /* ------------------------------------------------------------
    4. Main Content
    ------------------------------------------------------------ */
@@ -1122,11 +1191,11 @@ button[disabled] {
 
     /* ========== MOBILE CALENDAR CELLS ========== */
     .fc .fc-daygrid-day {
-        min-height: 80px !important;
+        min-height: 100px !important;
     }
 
     .fc .fc-daygrid-day-frame {
-        min-height: 75px !important;
+        min-height: 95px !important;
     }
 
     .fc .fc-daygrid-day-top {
@@ -1135,9 +1204,32 @@ button[disabled] {
     }
 
     .fc .fc-daygrid-day-number {
-        font-size: var(--font-size-sm);
+        font-size: var(--font-size-base);
         font-weight: 700;
-        padding: 4px 6px;
+        padding: 8px;
+    }
+
+    /* Hide week numbers on mobile */
+    .fc .fc-daygrid-week-number {
+        display: none !important;
+    }
+
+    /* Larger cells for mobile */
+    .fc .fc-daygrid-body-natural .fc-daygrid-day-events {
+        margin-bottom: 8px;
+    }
+
+    /* Clean day header (S M T W T F S) */
+    .fc .fc-col-header-cell {
+        padding: 12px 0 !important;
+        font-size: var(--font-size-sm);
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--color-text-muted);
+    }
+
+    .fc .fc-col-header-cell-cushion {
+        padding: 8px 4px !important;
     }
 
     /* ========== MOBILE PILL-STYLE EVENTS ========== */

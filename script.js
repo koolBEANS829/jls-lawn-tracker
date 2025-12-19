@@ -1413,15 +1413,22 @@ function initializeCalendar() {
     }
 
     try {
+        const isMobile = window.innerWidth <= 640;
+
         return new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            headerToolbar: {
+            initialView: isMobile ? 'dayGridThreeWeek' : 'dayGridMonth',
+            headerToolbar: isMobile ? false : {
                 left: 'prev,next today',
                 center: 'title',
                 right: 'dayGridMonth,listWeek'
             },
             height: 'auto',
             views: {
+                dayGridThreeWeek: {
+                    type: 'dayGrid',
+                    duration: { weeks: 3 },
+                    buttonText: '3 week'
+                },
                 listWeek: {
                     listDayFormat: { weekday: 'long', month: 'short', day: 'numeric' },
                     listDaySideFormat: false
@@ -1441,7 +1448,20 @@ function initializeCalendar() {
             },
             windowResize: () => {
                 try {
-                    if (calendar) calendar.changeView('dayGridMonth');
+                    const nowMobile = window.innerWidth <= 640;
+                    if (calendar) {
+                        if (nowMobile) {
+                            calendar.setOption('headerToolbar', false);
+                            calendar.changeView('dayGridThreeWeek');
+                        } else {
+                            calendar.setOption('headerToolbar', {
+                                left: 'prev,next today',
+                                center: 'title',
+                                right: 'dayGridMonth,listWeek'
+                            });
+                            calendar.changeView('dayGridMonth');
+                        }
+                    }
                 } catch (e) {
                     console.warn('Window resize handler error:', e);
                 }
@@ -1519,7 +1539,46 @@ document.addEventListener('DOMContentLoaded', async function () {
     detailsOverlay?.addEventListener('click', (e) => {
         if (e.target === detailsOverlay) closeJobDetails();
     });
+
+    // Mobile Calendar Controls
+    document.getElementById('mobile-prev')?.addEventListener('click', () => {
+        if (calendar) {
+            calendar.prev();
+            updateMobileCalendarTitle();
+        }
+    });
+
+    document.getElementById('mobile-next')?.addEventListener('click', () => {
+        if (calendar) {
+            calendar.next();
+            updateMobileCalendarTitle();
+        }
+    });
+
+    document.getElementById('mobile-today')?.addEventListener('click', () => {
+        if (calendar) {
+            calendar.today();
+            updateMobileCalendarTitle();
+        }
+    });
+
+    // Initialize mobile calendar title
+    updateMobileCalendarTitle();
 });
+
+/**
+ * Updates the mobile calendar title with current date range.
+ */
+function updateMobileCalendarTitle() {
+    if (!calendar) return;
+
+    const titleEl = document.getElementById('mobile-calendar-title');
+    if (!titleEl) return;
+
+    const currentDate = calendar.getDate();
+    const options = { month: 'long', year: 'numeric' };
+    titleEl.textContent = currentDate.toLocaleDateString('en-US', options);
+}
 
 // ============================================================
 // Toast Notification System
