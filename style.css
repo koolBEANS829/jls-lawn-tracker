@@ -139,75 +139,6 @@ body {
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Mobile Calendar Controls in Header */
-.mobile-calendar-controls {
-    display: none;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    position: relative;
-}
-
-.mobile-nav-btn {
-    width: 44px;
-    height: 44px;
-    border: none;
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    font-size: 1.5rem;
-    font-weight: 700;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.mobile-nav-btn:hover,
-.mobile-nav-btn:active {
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.05);
-}
-
-.mobile-title-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-#mobile-calendar-title {
-    font-size: var(--font-size-lg);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.mobile-today-btn {
-    padding: 4px 12px;
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    background: transparent;
-    color: white;
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    border-radius: var(--radius-full);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.mobile-today-btn:hover,
-.mobile-today-btn:active {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-@media (max-width: 640px) {
-    .desktop-title {
-        display: none;
-    }
-
-    .mobile-calendar-controls {
-        display: flex;
-    }
-}
-
 /* ------------------------------------------------------------
    4. Main Content
    ------------------------------------------------------------ */
@@ -222,84 +153,13 @@ main {
    ------------------------------------------------------------ */
 #calendar {
     position: relative;
-    height: calc(100vh - 140px);
-    min-height: 500px;
+    min-height: 75vh;
     padding: 1rem;
     background: var(--color-surface);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg), var(--shadow-glow);
     border: 1px solid var(--color-border-light);
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Make FullCalendar fill the container */
-.fc {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.fc .fc-view-harness {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.fc .fc-view {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.fc .fc-daygrid {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.fc .fc-scrollgrid,
-.fc .fc-scrollgrid-section,
-.fc .fc-scrollgrid-section table,
-.fc .fc-scrollgrid-section>td {
-    height: 100%;
-}
-
-.fc .fc-scrollgrid-section-body>td {
-    height: 100%;
-}
-
-.fc .fc-daygrid-body {
-    flex: 1;
-}
-
-/* Make table rows stretch to fill available space evenly */
-.fc .fc-scrollgrid-sync-table {
-    height: 100% !important;
-}
-
-.fc .fc-daygrid-body-balanced .fc-daygrid-day-events {
-    position: relative;
-}
-
-/* Week rows should expand evenly */
-.fc-scrollgrid-section-body .fc-daygrid-body tr {
-    height: calc(100% / 6);
-}
-
-/* Day cells should expand to fill row */
-.fc .fc-daygrid-day-frame {
-    min-height: 100% !important;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Events container should wrap */
-.fc .fc-daygrid-day-events {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
 }
 
 /* Calendar Header Buttons */
@@ -1194,26 +1054,107 @@ button[disabled] {
 
     main {
         padding: 0.5rem;
-        min-height: calc(100vh - 70px);
-        display: flex;
-        flex-direction: column;
     }
 
     #calendar {
-        padding: 0.25rem;
-        flex: 1;
-        display: flex;
+        padding: 0.5rem;
+    }
+
+    /* FullCalendar Header - Stack on mobile */
+    .fc .fc-toolbar {
         flex-direction: column;
+        gap: 8px;
+        padding: 8px 0;
     }
 
-    .fc {
-        flex: 1;
+    .fc .fc-toolbar-chunk {
+        display: flex;
+        justify-content: center;
+        width: 100%;
     }
 
-    .fc .fc-view-harness {
-        flex: 1;
+    .fc .fc-toolbar-title {
+        font-size: var(--font-size-lg) !important;
+        text-align: center;
     }
 
+    .fc .fc-button {
+        padding: 6px 10px !important;
+        font-size: var(--font-size-sm) !important;
+    }
+
+    .fc .fc-button-group {
+        display: flex;
+        gap: 2px;
+    }
+
+    /* Calendar cells - more compact */
+    .fc .fc-daygrid-day {
+        min-height: 60px !important;
+    }
+
+    .fc .fc-daygrid-day-number {
+        font-size: var(--font-size-sm);
+        padding: 4px !important;
+    }
+
+    /* Events as compact pills on mobile */
+    .fc .fc-daygrid-event {
+        margin: 1px 2px !important;
+        padding: 2px 4px !important;
+        border-radius: 4px !important;
+        font-size: 10px !important;
+        line-height: 1.2 !important;
+        min-height: auto !important;
+    }
+
+    .fc .fc-daygrid-event .fc-event-main {
+        padding: 0 !important;
+    }
+
+    /* Hide extra event details on mobile, show just the pill */
+    .fc .fc-daygrid-event .event-details,
+    .fc .fc-daygrid-event .event-address {
+        display: none !important;
+    }
+
+    .fc .fc-daygrid-event .event-title {
+        font-size: 10px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+
+    .fc .fc-daygrid-event .event-price {
+        font-size: 9px !important;
+        margin-left: 2px;
+    }
+
+    /* Stack multiple events indicator */
+    .fc .fc-daygrid-more-link {
+        font-size: 10px !important;
+        padding: 2px 4px !important;
+        background: var(--color-primary) !important;
+        color: white !important;
+        border-radius: 4px !important;
+        margin: 1px 2px !important;
+    }
+
+    /* List view improvements for mobile */
+    .fc .fc-list-event {
+        padding: 12px 8px !important;
+    }
+
+    .fc .fc-list-event-title {
+        font-size: var(--font-size-base) !important;
+    }
+
+    .fc .fc-list-event-time {
+        font-size: var(--font-size-sm) !important;
+    }
+
+    /* FAB button */
     .fab-btn {
         right: 16px;
         bottom: 16px;
@@ -1222,200 +1163,54 @@ button[disabled] {
         font-size: 2rem;
     }
 
+    /* Wizard adjustments */
     .wizard-card {
-        padding: 1.25rem;
-        max-height: 90vh;
+        padding: 1rem;
+        max-height: 95vh;
+        margin: 8px;
+        border-radius: var(--radius-md);
+    }
+
+    .wizard-header {
+        padding: 1rem;
     }
 
     .wizard-actions {
         flex-direction: column;
+        padding: 0.75rem 1rem 1rem;
     }
 
     .wizard-actions button {
         width: 100%;
     }
 
-    /* ========== MOBILE CALENDAR HEADER ========== */
-    .fc .fc-toolbar {
-        flex-direction: column;
-        gap: 8px;
-        align-items: stretch;
-    }
-
-    .fc .fc-toolbar-chunk {
-        display: flex;
-        justify-content: center;
-    }
-
-    .fc .fc-toolbar-chunk:first-child {
-        order: 2;
-    }
-
-    .fc .fc-toolbar-chunk:nth-child(2) {
-        order: 1;
-    }
-
-    .fc .fc-toolbar-chunk:last-child {
-        order: 3;
-    }
-
-    .fc .fc-toolbar-title {
-        font-size: var(--font-size-xl) !important;
-        margin: 0 !important;
-    }
-
-    .fc .fc-button {
-        padding: 8px 12px !important;
-        font-size: var(--font-size-sm) !important;
-    }
-
-    .fc .fc-prev-button,
-    .fc .fc-next-button {
-        padding: 8px 14px !important;
-    }
-
-    /* ========== MOBILE CALENDAR CELLS ========== */
-    #calendar {
-        height: calc(100vh - 120px);
-        min-height: 400px;
-        padding: 0.5rem;
-    }
-
-    .fc .fc-daygrid-day-frame {
-        min-height: unset !important;
-    }
-
-    .fc .fc-daygrid-day-top {
-        flex-direction: row;
-        justify-content: flex-end;
-    }
-
-    .fc .fc-daygrid-day-number {
-        font-size: var(--font-size-base);
-        font-weight: 700;
-        padding: 8px;
-    }
-
-    /* Hide week numbers on mobile */
-    .fc .fc-daygrid-week-number {
-        display: none !important;
-    }
-
-    /* Allow events to wrap and stack vertically */
-    .fc .fc-daygrid-day-events {
-        flex: 1;
-        margin-bottom: 4px;
-        overflow-y: auto;
-    }
-
-    /* Clean day header (S M T W T F S) */
-    .fc .fc-col-header-cell {
-        padding: 12px 0 !important;
-        font-size: var(--font-size-sm);
-        font-weight: 600;
-        text-transform: uppercase;
-        color: var(--color-text-muted);
-    }
-
-    .fc .fc-col-header-cell-cushion {
-        padding: 8px 4px !important;
-    }
-
-    /* ========== MOBILE PILL-STYLE EVENTS ========== */
-    .fc .fc-daygrid-event {
-        border-radius: 20px !important;
-        margin: 2px 3px !important;
-        padding: 4px 10px !important;
-        border-left: none !important;
-        border: 2px solid rgba(255, 255, 255, 0.3) !important;
-    }
-
-    .fc .fc-daygrid-event .fc-event-main {
-        padding: 0 !important;
-    }
-
-    /* Hide extra details on mobile, show just title */
-    .fc .fc-daygrid-event .event-details-row,
-    .fc .fc-daygrid-event .event-price,
-    .fc .fc-daygrid-event .event-address {
-        display: none !important;
-    }
-
-    .fc .fc-daygrid-event .event-title {
-        font-size: 10px !important;
-        font-weight: 600 !important;
-        line-height: 1.2 !important;
-        white-space: normal;
-        word-wrap: break-word;
-        overflow: visible;
-    }
-
-    .fc .fc-daygrid-event .event-content {
-        gap: 0;
-    }
-
-    /* Ensure job colors still show as nice pills */
-    .fc .fc-daygrid-event.job-mowing {
-        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%) !important;
-        box-shadow: 0 2px 6px rgba(13, 90, 31, 0.3);
-    }
-
-    .fc .fc-daygrid-event.job-hedge {
-        background: linear-gradient(135deg, var(--color-hedge) 0%, #fb923c 100%) !important;
-        box-shadow: 0 2px 6px rgba(249, 115, 22, 0.3);
-    }
-
-    .fc .fc-daygrid-event.job-completed {
-        background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%) !important;
-        opacity: 0.7;
-    }
-
-    .fc .fc-daygrid-event.job-cancelled {
-        background: linear-gradient(135deg, #94a3b8 0%, #cbd5e1 100%) !important;
-        opacity: 0.5;
-    }
-
-    /* More events indicator */
-    .fc .fc-daygrid-more-link {
-        font-size: 11px !important;
-        font-weight: 700;
-        color: var(--color-primary);
-        padding: 4px 8px;
-        background: var(--color-bg-secondary);
-        border-radius: 12px;
-        margin: 2px 3px;
-    }
-
-    /* ========== MOBILE LIST VIEW ========== */
-    .fc .fc-list-event-title {
-        font-size: var(--font-size-base);
-    }
-
-    .fc .fc-list-event td {
-        padding: 12px 8px !important;
-    }
-
-    /* ========== SCOPE MODALS ON MOBILE ========== */
+    /* Scope modal cards on mobile */
     .scope-card {
-        max-width: 95vw;
-        margin: 0 10px;
+        margin: 16px;
+        max-width: calc(100vw - 32px);
     }
 
     .scope-options {
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
     }
 
     .btn-scope-option {
         padding: 16px 20px;
     }
 
-    .scope-icon {
-        font-size: 1.5rem;
+    /* Job details modal on mobile */
+    .view-job-content {
+        gap: 12px;
     }
 
-    .scope-label {
-        font-size: var(--font-size-base);
+    .view-job-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .view-job-actions button {
+        width: 100%;
     }
 }
 
