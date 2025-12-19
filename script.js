@@ -61,6 +61,19 @@ let selectedJobType = '';
 let editScope = 'single'; // 'single' or 'all' - for bulk editing recurring jobs
 
 // ============================================================
+// Date Utilities
+// ============================================================
+
+/**
+ * Formats a date object to a local ISO string (YYYY-MM-DDTHH:mm).
+ * Preserves local time instead of converting to UTC.
+ */
+function toLocalISOString(date) {
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+// ============================================================
 // Storage Utilities
 // ============================================================
 
@@ -414,7 +427,7 @@ window.saveJob = async function () {
 
         const job = {
             title: eventTitle,
-            start_time: jobDate.toISOString().slice(0, 16),
+            start_time: toLocalISOString(jobDate),
             job_type: selectedJobType,
             notes: formData.notes,
             price: formData.price || null,
@@ -1163,7 +1176,7 @@ function openEditWizard(event) {
         const dateEl = document.getElementById('wizard-date');
         if (dateEl && event.start) {
             try {
-                dateEl.value = new Date(event.start).toISOString().slice(0, 16);
+                dateEl.value = toLocalISOString(new Date(event.start));
             } catch (e) {
                 console.warn('Date parsing error:', e);
                 dateEl.value = '';
