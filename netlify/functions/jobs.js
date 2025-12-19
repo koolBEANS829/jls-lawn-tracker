@@ -95,12 +95,12 @@ exports.handler = async (event, context) => {
             // First get all jobs in the series
             const jobs = await supabaseRequest(`jobs?recurring_id=eq.${recurringId}&select=id`);
 
-            // Update each job
+            // Update each job with timestamp
             let count = 0;
             for (const job of jobs || []) {
                 await supabaseRequest(`jobs?id=eq.${job.id}`, {
                     method: 'PATCH',
-                    body: updates,
+                    body: { ...updates, updated_at: new Date().toISOString() },
                     prefer: 'return=minimal'
                 });
                 count++;
@@ -120,7 +120,7 @@ exports.handler = async (event, context) => {
 
             await supabaseRequest(`jobs?id=eq.${jobId}`, {
                 method: 'PATCH',
-                body: updates,
+                body: { ...updates, updated_at: new Date().toISOString() },
                 prefer: 'return=minimal'
             });
 
@@ -137,7 +137,7 @@ exports.handler = async (event, context) => {
 
             await supabaseRequest(`jobs?id=eq.${jobId}`, {
                 method: 'PATCH',
-                body: { status: 'cancelled' },
+                body: { status: 'cancelled', updated_at: new Date().toISOString() },
                 prefer: 'return=minimal'
             });
 
@@ -161,7 +161,7 @@ exports.handler = async (event, context) => {
             for (const job of jobs || []) {
                 await supabaseRequest(`jobs?id=eq.${job.id}`, {
                     method: 'PATCH',
-                    body: { status: 'cancelled' },
+                    body: { status: 'cancelled', updated_at: new Date().toISOString() },
                     prefer: 'return=minimal'
                 });
                 count++;
@@ -184,7 +184,7 @@ exports.handler = async (event, context) => {
             for (const job of jobs || []) {
                 await supabaseRequest(`jobs?id=eq.${job.id}`, {
                     method: 'PATCH',
-                    body: { status: 'cancelled' },
+                    body: { status: 'cancelled', updated_at: new Date().toISOString() },
                     prefer: 'return=minimal'
                 });
                 count++;
@@ -203,7 +203,7 @@ exports.handler = async (event, context) => {
 
             await supabaseRequest(`jobs?id=eq.${jobId}`, {
                 method: 'PATCH',
-                body: { status: 'done' },
+                body: { status: 'done', updated_at: new Date().toISOString() },
                 prefer: 'return=minimal'
             });
 

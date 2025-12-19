@@ -15,7 +15,8 @@ create table public.jobs (
   recurring_id text,                  -- ID to link recurring jobs
   is_recurring boolean default false, -- Whether this is part of a recurring series
   recurrence_pattern text,            -- JSON pattern for recurrence
-  occurrence_number int               -- Which occurrence number in the series
+  occurrence_number int,              -- Which occurrence number in the series
+  updated_at timestamp with time zone -- When the job was last modified
 );
 
 -- 2. Turn off "Row Level Security" (RLS) for now
