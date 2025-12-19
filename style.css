@@ -1121,6 +1121,11 @@ button[disabled] {
         text-align: center;
     }
 
+    /* Hide title completely on mobile - dates show in list/calendar anyway */
+    .fc .fc-toolbar-chunk:nth-child(2) {
+        display: none;
+    }
+
     .fc .fc-button {
         padding: 6px 10px !important;
         font-size: var(--font-size-sm) !important;
