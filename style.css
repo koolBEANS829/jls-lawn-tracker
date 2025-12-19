@@ -1122,12 +1122,25 @@ button[disabled] {
     }
 
     main {
-        padding: 0;
+        padding: 0.5rem;
+        min-height: calc(100vh - 70px);
+        display: flex;
+        flex-direction: column;
     }
 
     #calendar {
-        padding: 0;
-        border-radius: 0;
+        padding: 0.25rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .fc {
+        flex: 1;
+    }
+
+    .fc .fc-view-harness {
+        flex: 1;
     }
 
     .fab-btn {
@@ -1257,7 +1270,7 @@ button[disabled] {
         font-size: 10px !important;
         font-weight: 600 !important;
         line-height: 1.2 !important;
-        white-space: normal !important;
+        white-space: normal;
         word-wrap: break-word;
         overflow: visible;
     }
