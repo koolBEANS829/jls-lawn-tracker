@@ -28,7 +28,23 @@
     </header>
 
     <main>
-        <div id="calendar"></div>
+        <div class="app-card-wrapper">
+            <div id="calendar"></div>
+
+            <!-- Weekly Sum Tracker -->
+            <div id="weekly-stats" class="weekly-stats hidden">
+                <div class="stat-item">
+                    <span class="stat-label">Potential</span>
+                    <span class="stat-value" id="stat-potential">$0.00</span>
+                </div>
+                <div class="stat-divider">/</div>
+                <div class="stat-item">
+                    <span class="stat-label">Earned</span>
+                    <span class="stat-value highlight" id="stat-earned">$0.00</span>
+                </div>
+            </div>
+        </div>
+
         <button id="fab-add-job" class="fab-btn" aria-label="Add New Job">+</button>
 
         <!-- New Job Wizard -->
