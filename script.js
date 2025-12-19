@@ -1438,14 +1438,8 @@ function initializeCalendar() {
                 } catch (e) {
                     console.error('Event click error:', e);
                 }
-            },
-            windowResize: () => {
-                try {
-                    if (calendar) calendar.changeView('dayGridMonth');
-                } catch (e) {
-                    console.warn('Window resize handler error:', e);
-                }
             }
+            // Note: windowResize handler removed - was causing list view to reset on mobile
         });
     } catch (error) {
         console.error('Calendar initialization error:', error);
