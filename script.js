@@ -1438,6 +1438,14 @@ function initializeCalendar() {
                 } catch (e) {
                     console.error('Event click error:', e);
                 }
+            },
+            datesSet: (info) => {
+                // Toggle class on body based on view type
+                if (info.view.type === 'listWeek') {
+                    document.body.classList.add('view-list');
+                } else {
+                    document.body.classList.remove('view-list');
+                }
             }
             // Note: windowResize handler removed - was causing list view to reset on mobile
         });

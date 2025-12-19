@@ -1052,6 +1052,11 @@ button[disabled] {
         letter-spacing: 1px;
     }
 
+    /* Hide app header in list view on mobile to save space */
+    body.view-list .app-header {
+        display: none;
+    }
+
     main {
         padding: 0.5rem;
     }
