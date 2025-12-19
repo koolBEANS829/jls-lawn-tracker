@@ -1076,6 +1076,84 @@ function clearFieldError(fieldId) {
 // UI Functions
 // ============================================================
 
+/**
+ * Updates the weekly sum tracker based on the current view.
+ */
+function updateWeeklyStats(viewOrEvents) {
+    const statsBar = document.getElementById('weekly-stats');
+    if (!statsBar) return;
+
+    // We can be called with a view object (datesSet) or just events (eventsSet)
+    // If called with events, we need to access the current calendar view
+    let currentView = calendar ? calendar.view : null;
+
+    // If we don't have a view yet, or if it's not a list/grid view, hide stats
+    if (!currentView) {
+        statsBar.classList.add('hidden');
+        return;
+    }
+
+    // Determine the active range
+    const start = currentView.activeStart;
+    const end = currentView.activeEnd;
+
+    // Get all events and filter by date range and status
+    const events = calendar.getEvents();
+
+    let potentialTotal = 0;
+    let earnedTotal = 0;
+    let hasJobs = false;
+
+    events.forEach(event => {
+        // Skip background events or empty placeholders
+        if (event.display === 'background' || event.classNames.includes('job-empty-day')) return;
+
+        // Check if event falls within the current view's range
+        // Note: activeEnd is exclusive
+        if (event.start >= start && event.start < end) {
+            hasJobs = true;
+
+            // Check status
+            const status = event.extendedProps.status;
+            if (status === 'cancelled') return;
+
+            // Parse price
+            const price = parseFloat(event.extendedProps.price || 0);
+
+            // Add to Potential (Pending + Done)
+            potentialTotal += price;
+
+            // Add to Earned (Done only)
+            if (status === 'done') {
+                earnedTotal += price;
+            }
+        }
+    });
+
+    // Update UI
+    // Show stats if we are in list view, or if we want it always visible
+    // The user asked for "under the scheduled week list", so let's check if we are in list mode
+    // or just show it always as a "tracker"
+    const isListMode = currentView.type.includes('list');
+
+    // We'll show it if it's a list view OR if there are jobs in the current view
+    if (isListMode || hasJobs) {
+        statsBar.classList.remove('hidden');
+    } else {
+        // Optional: Hide if no jobs in month view? keeping it visible feels more like a "Command Center"
+        statsBar.classList.remove('hidden');
+    }
+
+    // Format currency
+    const formatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+    });
+
+    document.getElementById('stat-potential').textContent = formatter.format(potentialTotal);
+    document.getElementById('stat-earned').textContent = formatter.format(earnedTotal);
+}
+
 window.selectJobType = function (type) {
     selectedJobType = type;
     document.querySelectorAll('.btn-big-type').forEach(btn => btn.classList.remove('selected'));
@@ -1459,6 +1537,10 @@ function initializeCalendar() {
                 } else {
                     document.body.classList.remove('view-list');
                 }
+                updateWeeklyStats(info.view);
+            },
+            eventsSet: (events) => {
+                updateWeeklyStats(events);
             }
             // Note: windowResize handler removed - was causing list view to reset on mobile
         });
