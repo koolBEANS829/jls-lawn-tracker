@@ -75,7 +75,7 @@
                         <label for="wizard-notes">Notes (Optional)</label>
                         <textarea id="wizard-notes" placeholder="e.g. Gate code is 1234"></textarea>
                     </div>
-                    <div class="form-group-large">
+                    <div id="recurring-checkbox-container" class="form-group-large">
                         <label class="checkbox-label">
                             <input type="checkbox" id="wizard-recurring" onchange="toggleRecurringOptions()">
                             <span>🔁 Make this a recurring job</span>
@@ -99,6 +99,65 @@
                     <div class="wizard-actions right-align">
                         <button type="button" class="btn-save" onclick="saveJob()">SCHEDULE JOB</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Scope Selection Modal -->
+        <div id="edit-scope-modal" class="wizard-overlay hidden">
+            <div class="wizard-card scope-card">
+                <div class="wizard-header">
+                    <h2>🔁 Recurring Job</h2>
+                </div>
+                <div class="scope-content">
+                    <p class="scope-prompt">This job is part of a recurring series. What would you like to edit?</p>
+                    <div class="scope-options">
+                        <button type="button" class="btn-scope-option single" onclick="selectEditScope('single')">
+                            <span class="scope-icon">📌</span>
+                            <span class="scope-label">Just This Job</span>
+                            <span class="scope-desc">Only modify this single occurrence</span>
+                        </button>
+                        <button type="button" class="btn-scope-option all" onclick="selectEditScope('all')">
+                            <span class="scope-icon">📋</span>
+                            <span class="scope-label">All Jobs in Series</span>
+                            <span class="scope-desc">Apply changes to every job in this series</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cancel Scope Selection Modal -->
+        <div id="cancel-scope-modal" class="wizard-overlay hidden">
+            <div class="wizard-card scope-card cancel-scope-card">
+                <div class="wizard-header cancel-header">
+                    <h2>⚠️ Cancel Job</h2>
+                </div>
+                <div class="scope-content">
+                    <p id="cancel-scope-prompt" class="scope-prompt">Are you sure you want to cancel this job?</p>
+                    <div class="scope-options">
+                        <!-- For non-recurring jobs, only this button shows -->
+                        <button type="button" class="btn-scope-option cancel-single" id="btn-cancel-single"
+                            onclick="confirmCancelScope('single')">
+                            <span class="scope-icon">🚫</span>
+                            <span class="scope-label">Cancel This Job</span>
+                            <span class="scope-desc">Mark this job as cancelled</span>
+                        </button>
+                        <!-- These only show for recurring jobs -->
+                        <button type="button" class="btn-scope-option cancel-future" id="btn-cancel-future"
+                            onclick="confirmCancelScope('future')">
+                            <span class="scope-icon">📅</span>
+                            <span class="scope-label">This & Future Jobs</span>
+                            <span class="scope-desc">Cancel this and all upcoming jobs in series</span>
+                        </button>
+                        <button type="button" class="btn-scope-option cancel-all" id="btn-cancel-all"
+                            onclick="confirmCancelScope('all')">
+                            <span class="scope-icon">🗑️</span>
+                            <span class="scope-label">Entire Series</span>
+                            <span class="scope-desc">Cancel all jobs in this series</span>
+                        </button>
+                    </div>
+                    <button type="button" class="btn-nevermind" onclick="closeCancelModal()">Never mind</button>
                 </div>
             </div>
         </div>

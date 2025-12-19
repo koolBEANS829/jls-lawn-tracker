@@ -34,9 +34,8 @@ console.log('--- JLS Lawn Tracker Initialized ---');
 // ============================================================
 
 const CONFIG = {
-    supabase: {
-        url: 'https://eplsowiliweiilcoomtd.supabase.co',
-        key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwbHNvd2lsaXdlaWlsY29vbXRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4NDg3MDYsImV4cCI6MjA4MTQyNDcwNn0.eB-idCDGSqcltv2OH8WMvRFQlyx3IYrBqMD4o5oUXSE'
+    api: {
+        baseUrl: '/api/jobs'  // Netlify Function handles Supabase calls
     },
     storage: {
         jobsKey: 'jls_local_jobs',
@@ -53,12 +52,13 @@ const CONFIG = {
 // Global State
 // ============================================================
 
-let supabaseClient = null; // Renamed to avoid conflict with supabase.min.js SDK
+// apiAvailable is set by initializeAPI() in the API Initialization section
 let calendar = null;
 let currentEventId = null;
 let currentRecurringId = null;
 let isEditMode = false;
 let selectedJobType = '';
+let editScope = 'single'; // 'single' or 'all' - for bulk editing recurring jobs
 
 // ============================================================
 // Storage Utilities
@@ -92,69 +92,34 @@ const Storage = {
 };
 
 // ============================================================
-// Supabase Initialization
+// API Initialization
 // ============================================================
 
+// Track if API is available (vs local-only mode)
+let apiAvailable = false;
+
 /**
- * Dynamically loads and initializes Supabase client.
- * Falls back to local mode if loading fails.
+ * Check if the API is available.
+ * Falls back to local mode if API is not reachable.
  */
-async function initializeSupabase() {
-    return new Promise((resolve) => {
-        // Check if SDK already loaded (prevents double-loading errors)
-        if (window.supabase?.createClient) {
-            try {
-                supabaseClient = window.supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.key);
-                console.log('✅ Supabase Connected (Cloud Mode)');
-                verifySupabaseConnection();
-                resolve(true);
-            } catch (error) {
-                console.warn('⚠️ Supabase init failed:', error);
-                resolve(false);
-            }
-            return;
+async function initializeAPI() {
+    try {
+        const response = await fetch(CONFIG.api.baseUrl, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (response.ok) {
+            apiAvailable = true;
+            console.log('✅ API Connected (Cloud Mode)');
+            return true;
+        } else {
+            console.warn('⚠️ API returned error. Running in LOCAL MODE.');
+            return false;
         }
-
-        const script = document.createElement('script');
-        script.src = 'supabase.min.js';
-
-        script.onload = () => {
-            const SupabaseSDK = window.supabase || window.Supabase;
-
-            if (!SupabaseSDK?.createClient) {
-                console.warn('⚠️ Supabase SDK not available. Running in LOCAL MODE.');
-                resolve(false);
-                return;
-            }
-
-            try {
-                supabaseClient = SupabaseSDK.createClient(CONFIG.supabase.url, CONFIG.supabase.key);
-                console.log('✅ Supabase Connected (Cloud Mode)');
-                verifySupabaseConnection();
-                resolve(true);
-            } catch (error) {
-                console.warn('⚠️ Supabase init failed:', error);
-                resolve(false);
-            }
-        };
-
-        script.onerror = () => {
-            console.warn('⚠️ Could not load Supabase. Running in LOCAL MODE.');
-            resolve(false);
-        };
-
-        document.body.appendChild(script);
-    });
-}
-
-/**
- * Verifies Supabase connection is working.
- */
-function verifySupabaseConnection() {
-    if (supabaseClient) {
-        supabaseClient.from('jobs').select('count', { count: 'exact', head: true })
-            .then(() => console.log('✅ Cloud connection verified'))
-            .catch((e) => console.warn('⚠️ Cloud connection unstable:', e));
+    } catch (error) {
+        console.warn('⚠️ Could not reach API. Running in LOCAL MODE.', error);
+        return false;
     }
 }
 
@@ -282,8 +247,8 @@ function addEmptyDayPlaceholders(events, startDate, endDate) {
 // ============================================================
 
 /**
- * Fetches jobs from Supabase or local storage.
- * Automatically falls back to local storage on cloud errors.
+ * Fetches jobs from API or local storage.
+ * Automatically falls back to local storage on API errors.
  */
 async function fetchEvents(info, successCallback, failureCallback) {
     const processEvents = (rawEvents) => {
@@ -299,8 +264,8 @@ async function fetchEvents(info, successCallback, failureCallback) {
     };
 
     // Local mode fallback
-    if (!supabaseClient) {
-        console.warn('Using local data (Supabase not connected)');
+    if (!apiAvailable) {
+        console.warn('Using local data (API not connected)');
         try {
             const localJobs = Storage.get(CONFIG.storage.jobsKey) || [];
             processEvents(localJobs);
@@ -311,23 +276,24 @@ async function fetchEvents(info, successCallback, failureCallback) {
         return;
     }
 
-    // Fetch from cloud with timeout
+    // Fetch from API with timeout
     try {
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Request timeout')), 10000)
-        );
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const fetchPromise = supabaseClient.from('jobs').select('*');
-        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+        const response = await fetch(CONFIG.api.baseUrl, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal
+        });
 
-        if (error) {
-            console.error('Error fetching jobs:', error);
-            // Fallback to local storage on cloud error
-            console.warn('Falling back to local storage...');
-            const localJobs = Storage.get(CONFIG.storage.jobsKey) || [];
-            processEvents(localJobs);
-            return;
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
         }
+
+        const data = await response.json();
 
         const mappedEvents = (data || []).map(job => {
             try {
@@ -470,8 +436,15 @@ window.saveJob = async function () {
     // Save
     try {
         if (isEditMode) {
-            await updateJob(currentEventId, jobsToCreate[0]);
-            alert('Job Updated!');
+            if (editScope === 'all' && currentRecurringId) {
+                // Bulk update all jobs in the series
+                const count = await updateAllInSeries(currentRecurringId, jobsToCreate[0]);
+                alert(`Updated ${count} job(s) in the series!`);
+            } else {
+                // Single job update
+                await updateJob(currentEventId, jobsToCreate[0]);
+                alert('Job Updated!');
+            }
         } else {
             await createJobs(jobsToCreate);
             const jobWord = jobsToCreate.length > 1 ? 'Jobs' : 'Job';
@@ -486,6 +459,7 @@ window.saveJob = async function () {
         safeRefetchCalendar();
         closeWizard();
         isEditMode = false;
+        editScope = 'single'; // Reset edit scope
     } catch (error) {
         console.error('Save error:', error);
         alert('Error saving: ' + (error?.message || 'Unknown error'));
@@ -509,9 +483,16 @@ function safeRefetchCalendar() {
  * Creates new jobs in database or local storage.
  */
 async function createJobs(jobs) {
-    if (supabaseClient) {
-        const { error } = await supabaseClient.from('jobs').insert(jobs).select();
-        if (error) throw error;
+    if (apiAvailable) {
+        const response = await fetch(CONFIG.api.baseUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(jobs)
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create jobs');
+        }
     } else {
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
         jobs.forEach((job, idx) => {
@@ -539,9 +520,16 @@ async function createJobs(jobs) {
  * Updates an existing job.
  */
 async function updateJob(jobId, jobData) {
-    if (supabaseClient) {
-        const { error } = await supabaseClient.from('jobs').update(jobData).eq('id', jobId);
-        if (error) throw error;
+    if (apiAvailable) {
+        const response = await fetch(`${CONFIG.api.baseUrl}/${jobId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(jobData)
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to update job');
+        }
     } else {
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
         const index = existing.findIndex(j => j.id === jobId);
@@ -562,6 +550,55 @@ async function updateJob(jobId, jobData) {
 }
 
 /**
+ * Updates all jobs in a recurring series with shared data.
+ * Preserves each job's individual start_time, status, and occurrence_number.
+ */
+async function updateAllInSeries(recurringId, jobData) {
+    // Fields to update across all jobs in the series
+    const sharedData = {
+        title: jobData.title,
+        job_type: jobData.job_type,
+        notes: jobData.notes,
+        price: jobData.price,
+        address: jobData.address,
+        client_phone: jobData.client_phone
+    };
+
+    if (apiAvailable) {
+        const response = await fetch(`${CONFIG.api.baseUrl}/series/${recurringId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sharedData)
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to update series');
+        }
+        const result = await response.json();
+        return result.updated || 0;
+    } else {
+        // Local storage update
+        const existing = Storage.get(CONFIG.storage.jobsKey) || [];
+        let count = 0;
+
+        existing.forEach(job => {
+            if (job.recurring_id === recurringId) {
+                job.title = sharedData.title;
+                job.type = sharedData.job_type;
+                job.notes = sharedData.notes;
+                job.price = sharedData.price;
+                job.address = sharedData.address;
+                job.phone = sharedData.client_phone;
+                count++;
+            }
+        });
+
+        Storage.set(CONFIG.storage.jobsKey, existing);
+        return count;
+    }
+}
+
+/**
  * Marks a job as complete.
  */
 window.markJobAsDone = async function () {
@@ -569,11 +606,15 @@ window.markJobAsDone = async function () {
     if (!confirm('Mark this job as DONE?')) return;
 
     try {
-        if (supabaseClient) {
-            const { error } = await supabaseClient.from('jobs')
-                .update({ status: 'done' })
-                .eq('id', currentEventId);
-            if (error) throw error;
+        if (apiAvailable) {
+            const response = await fetch(`${CONFIG.api.baseUrl}/done/${currentEventId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to mark job done');
+            }
         } else {
             const existing = Storage.get(CONFIG.storage.jobsKey) || [];
             const index = existing.findIndex(j => j.id === currentEventId);
@@ -596,6 +637,11 @@ window.markJobAsDone = async function () {
 // Job Cancellation
 // ============================================================
 
+// Store cancellation context
+let pendingCancelRecurringId = null;
+let pendingCancelDate = null;
+let pendingCancelIsRecurring = false;
+
 window.cancelJob = async function () {
     if (!currentEventId) return;
 
@@ -606,71 +652,90 @@ window.cancelJob = async function () {
         console.warn('Could not get event by ID:', e);
     }
 
-    if (!event) {
-        // Fallback: just cancel the single job by ID
-        if (!confirm('Cancel this job?')) return;
-        try {
-            await cancelSingleJob(currentEventId);
-            safeRefetchCalendar();
-            closeJobDetails();
-        } catch (error) {
-            console.error('Cancel error:', error);
-            alert('Error cancelling: ' + (error?.message || 'Unknown error'));
-        }
-        return;
+    const isRecurring = event?.extendedProps?.is_recurring;
+    const recurringId = event?.extendedProps?.recurring_id;
+    const currentDate = event?.start ? new Date(event.start) : new Date();
+
+    // Store context for when user selects an option
+    pendingCancelRecurringId = recurringId;
+    pendingCancelDate = currentDate;
+    pendingCancelIsRecurring = isRecurring && recurringId;
+
+    // Show/hide appropriate buttons based on whether it's recurring
+    const singleBtn = document.getElementById('btn-cancel-single');
+    const futureBtn = document.getElementById('btn-cancel-future');
+    const allBtn = document.getElementById('btn-cancel-all');
+    const prompt = document.getElementById('cancel-scope-prompt');
+
+    if (pendingCancelIsRecurring) {
+        // Recurring job - show all options
+        if (singleBtn) singleBtn.classList.remove('hidden');
+        if (futureBtn) futureBtn.classList.remove('hidden');
+        if (allBtn) allBtn.classList.remove('hidden');
+        if (prompt) prompt.textContent = 'This job is part of a recurring series. What would you like to cancel?';
+    } else {
+        // Non-recurring - only show single cancel option
+        if (singleBtn) singleBtn.classList.remove('hidden');
+        if (futureBtn) futureBtn.classList.add('hidden');
+        if (allBtn) allBtn.classList.add('hidden');
+        if (prompt) prompt.textContent = 'Cancel this job? It will remain on the calendar but marked as cancelled.';
     }
 
-    const isRecurring = event.extendedProps?.is_recurring;
-    const recurringId = event.extendedProps?.recurring_id;
-    const currentDate = event.start ? new Date(event.start) : new Date();
+    // Close job details and show cancel modal
+    closeJobDetails();
+    document.getElementById('cancel-scope-modal')?.classList.remove('hidden');
+};
+
+/**
+ * Close the cancel modal without doing anything.
+ */
+window.closeCancelModal = function () {
+    document.getElementById('cancel-scope-modal')?.classList.add('hidden');
+    pendingCancelRecurringId = null;
+    pendingCancelDate = null;
+    pendingCancelIsRecurring = false;
+};
+
+/**
+ * Handle user's cancel scope selection.
+ */
+window.confirmCancelScope = async function (scope) {
+    document.getElementById('cancel-scope-modal')?.classList.add('hidden');
 
     try {
-        if (isRecurring && recurringId) {
-            await handleRecurringCancellation(recurringId, currentDate);
-        } else {
-            if (!confirm('Cancel this job? It will remain on calendar but marked as cancelled.')) return;
+        if (scope === 'single') {
             await cancelSingleJob(currentEventId);
+            alert('Job cancelled!');
+        } else if (scope === 'future' && pendingCancelRecurringId) {
+            const count = await cancelFutureJobs(pendingCancelRecurringId, pendingCancelDate);
+            alert(`Cancelled ${count} job(s)!`);
+        } else if (scope === 'all' && pendingCancelRecurringId) {
+            const count = await cancelEntireSeries(pendingCancelRecurringId);
+            alert(`Cancelled all ${count} job(s) in series!`);
         }
 
         safeRefetchCalendar();
-        closeJobDetails();
     } catch (error) {
         console.error('Cancel error:', error);
         alert('Error cancelling: ' + (error?.message || 'Unknown error'));
     }
+
+    // Reset state
+    pendingCancelRecurringId = null;
+    pendingCancelDate = null;
+    pendingCancelIsRecurring = false;
 };
 
-async function handleRecurringCancellation(recurringId, fromDate) {
-    const firstChoice = confirm(
-        '🔁 This is a RECURRING job.\n\n' +
-        'Click OK → See more options\n' +
-        'Click CANCEL → Cancel ONLY this single job'
-    );
-
-    if (!firstChoice) {
-        await cancelSingleJob(currentEventId);
-        return;
-    }
-
-    const secondChoice = confirm(
-        'Choose cancellation scope:\n\n' +
-        'Click OK → Cancel ALL jobs in entire series\n' +
-        'Click CANCEL → Cancel this + future jobs only'
-    );
-
-    if (secondChoice) {
-        await cancelEntireSeries(recurringId);
-    } else {
-        await cancelFutureJobs(recurringId, fromDate);
-    }
-}
-
 async function cancelSingleJob(jobId) {
-    if (supabaseClient) {
-        const { error } = await supabaseClient.from('jobs')
-            .update({ status: 'cancelled' })
-            .eq('id', jobId);
-        if (error) throw error;
+    if (apiAvailable) {
+        const response = await fetch(`${CONFIG.api.baseUrl}/cancel/${jobId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to cancel job');
+        }
     } else {
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
         const index = existing.findIndex(j => j.id === jobId);
@@ -683,16 +748,20 @@ async function cancelSingleJob(jobId) {
 }
 
 async function cancelFutureJobs(recurringId, fromDate) {
-    if (supabaseClient) {
-        const { data: jobs } = await supabaseClient.from('jobs')
-            .select('*')
-            .eq('recurring_id', recurringId)
-            .gte('start_time', fromDate.toISOString());
-
-        for (const job of jobs || []) {
-            await supabaseClient.from('jobs').update({ status: 'cancelled' }).eq('id', job.id);
+    if (apiAvailable) {
+        const response = await fetch(
+            `${CONFIG.api.baseUrl}/cancel-future/${recurringId}/${encodeURIComponent(fromDate.toISOString())}`,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to cancel future jobs');
         }
-        alert(`Cancelled ${jobs?.length || 0} future job(s).`);
+        const result = await response.json();
+        return result.cancelled || 0;
     } else {
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
         let count = 0;
@@ -704,20 +773,22 @@ async function cancelFutureJobs(recurringId, fromDate) {
             }
         });
         Storage.set(CONFIG.storage.jobsKey, existing);
-        alert(`Cancelled ${count} future job(s).`);
+        return count;
     }
 }
 
 async function cancelEntireSeries(recurringId) {
-    if (supabaseClient) {
-        const { data: jobs } = await supabaseClient.from('jobs')
-            .select('*')
-            .eq('recurring_id', recurringId);
-
-        for (const job of jobs || []) {
-            await supabaseClient.from('jobs').update({ status: 'cancelled' }).eq('id', job.id);
+    if (apiAvailable) {
+        const response = await fetch(`${CONFIG.api.baseUrl}/cancel-series/${recurringId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to cancel series');
         }
-        alert(`Cancelled ALL ${jobs?.length || 0} job(s) in series!`);
+        const result = await response.json();
+        return result.cancelled || 0;
     } else {
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
         let count = 0;
@@ -729,7 +800,7 @@ async function cancelEntireSeries(recurringId) {
             }
         });
         Storage.set(CONFIG.storage.jobsKey, existing);
-        alert(`Cancelled ALL ${count} job(s) in series!`);
+        return count;
     }
 }
 
@@ -1013,6 +1084,9 @@ window.toggleRecurringOptions = function () {
     }
 };
 
+// Store event data temporarily when showing scope modal
+let pendingEditEvent = null;
+
 window.editJob = function () {
     if (!currentEventId) {
         alert('No job selected to edit.');
@@ -1031,11 +1105,48 @@ window.editJob = function () {
         return;
     }
 
+    // Check if this is a recurring job and prompt for edit scope
+    const isRecurring = event.extendedProps?.is_recurring;
+    const recurringId = event.extendedProps?.recurring_id;
+
+    if (isRecurring && recurringId) {
+        // Store event for later and show scope selection modal
+        pendingEditEvent = event;
+        currentRecurringId = recurringId;
+        closeJobDetails();
+        document.getElementById('edit-scope-modal')?.classList.remove('hidden');
+    } else {
+        // Non-recurring job: go straight to edit mode
+        editScope = 'single';
+        currentRecurringId = null;
+        openEditWizard(event);
+    }
+};
+
+/**
+ * Called when user selects an edit scope from the modal.
+ */
+window.selectEditScope = function (scope) {
+    editScope = scope;
+    document.getElementById('edit-scope-modal')?.classList.add('hidden');
+
+    if (pendingEditEvent) {
+        openEditWizard(pendingEditEvent);
+        pendingEditEvent = null;
+    }
+};
+
+/**
+ * Opens the wizard in edit mode with the given event data.
+ */
+function openEditWizard(event) {
     try {
         isEditMode = true;
 
         const titleEl = document.getElementById('wizard-title');
-        if (titleEl) titleEl.textContent = 'Edit Job';
+        if (titleEl) {
+            titleEl.textContent = editScope === 'all' ? 'Edit All Jobs in Series' : 'Edit Job';
+        }
 
         const clientEl = document.getElementById('wizard-client');
         if (clientEl) clientEl.value = (event.title || '').split(' - ')[0];
@@ -1059,6 +1170,18 @@ window.editJob = function () {
             }
         }
 
+        // Disable date field when editing all in series (each job keeps its own date)
+        // Enable it for single job edits
+        if (dateEl) {
+            if (editScope === 'all') {
+                dateEl.disabled = true;
+                dateEl.title = 'Date cannot be changed when editing all jobs in series';
+            } else {
+                dateEl.disabled = false;
+                dateEl.title = '';
+            }
+        }
+
         const notesEl = document.getElementById('wizard-notes');
         if (notesEl) notesEl.value = event.extendedProps?.notes || '';
 
@@ -1066,13 +1189,24 @@ window.editJob = function () {
         document.querySelectorAll('.btn-big-type').forEach(btn => btn.classList.remove('selected'));
         document.querySelector(`.btn-big-type.${selectedJobType}`)?.classList.add('selected');
 
+        // Hide recurring checkbox for recurring job edits (they already selected scope)
+        // Show but disable for non-recurring edits
+        const recurringContainer = document.getElementById('recurring-checkbox-container');
         const recurringCheckbox = document.getElementById('wizard-recurring');
-        if (recurringCheckbox) {
-            recurringCheckbox.checked = false;
-            recurringCheckbox.disabled = true;
+        const recurringOptions = document.getElementById('recurring-options');
+
+        if (currentRecurringId) {
+            // Editing a recurring job - hide the checkbox entirely
+            if (recurringContainer) recurringContainer.classList.add('hidden');
+        } else {
+            // Editing a non-recurring job - show but disable
+            if (recurringContainer) recurringContainer.classList.remove('hidden');
+            if (recurringCheckbox) {
+                recurringCheckbox.checked = false;
+                recurringCheckbox.disabled = true;
+            }
         }
 
-        const recurringOptions = document.getElementById('recurring-options');
         if (recurringOptions) recurringOptions.classList.add('hidden');
 
         closeJobDetails();
@@ -1084,15 +1218,16 @@ window.editJob = function () {
         alert('Error: Could not open edit form.');
         isEditMode = false;
     }
-};
+}
 
 function openWizard() {
-    if (!supabaseClient && Storage.get(CONFIG.storage.jobsKey) === null) {
+    if (!apiAvailable && Storage.get(CONFIG.storage.jobsKey) === null) {
         alert('NOTE: Cloud Sync not available. Data saved locally only.');
     }
 
     isEditMode = false;
     selectedJobType = '';
+    editScope = 'single'; // Reset edit scope
 
     // Clear any previous validation errors
     clearValidationErrors();
@@ -1102,8 +1237,20 @@ function openWizard() {
     document.getElementById('wizard-phone').value = '';
     document.getElementById('wizard-address').value = '';
     document.getElementById('wizard-price').value = '';
-    document.getElementById('wizard-date').value = '';
+
+    const dateEl = document.getElementById('wizard-date');
+    if (dateEl) {
+        dateEl.value = '';
+        dateEl.disabled = false; // Re-enable in case it was disabled for bulk edit
+        dateEl.title = '';
+    }
+
     document.getElementById('wizard-notes').value = '';
+
+    // Make sure recurring checkbox is visible and enabled for new jobs
+    const recurringContainer = document.getElementById('recurring-checkbox-container');
+    if (recurringContainer) recurringContainer.classList.remove('hidden');
+
     document.getElementById('wizard-recurring').checked = false;
     document.getElementById('wizard-recurring').disabled = false;
     document.getElementById('recurring-options').classList.add('hidden');
@@ -1333,8 +1480,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.warn('⚠️ Running via file:// protocol. Some features may be limited.');
     }
 
-    // Initialize Supabase
-    await initializeSupabase();
+    // Initialize API connection
+    await initializeAPI();
 
     // Initialize Calendar
     calendar = initializeCalendar();

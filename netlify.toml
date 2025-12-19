@@ -1,3 +1,16 @@
+[functions]
+  directory = "netlify/functions"
+
 [[edge_functions]]
   path = "/*"
   function = "auth"
+
+[[redirects]]
+  from = "/api/jobs/*"
+  to = "/.netlify/functions/jobs/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/jobs"
+  to = "/.netlify/functions/jobs"
+  status = 200
