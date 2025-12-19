@@ -151,15 +151,24 @@ main {
 /* ------------------------------------------------------------
    5. Calendar Container
    ------------------------------------------------------------ */
-#calendar {
-    position: relative;
-    min-height: 75vh;
-    padding: 1rem;
+.app-card-wrapper {
     background: var(--color-surface);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg), var(--shadow-glow);
     border: 1px solid var(--color-border-light);
     overflow: hidden;
+}
+
+#calendar {
+    position: relative;
+    min-height: 75vh;
+    padding: 1rem;
+    /* Removed card styles as they are now on wrapper */
+}
+
+/* Make calendar height auto in list view to hug content */
+body.view-list #calendar {
+    min-height: auto;
 }
 
 /* Calendar Header Buttons */
@@ -1475,12 +1484,10 @@ button[disabled] {
     display: flex;
     align-items: center;
     justify-content: space-around;
-    margin-top: 1rem;
-    padding: 1.25rem;
+    padding: 1rem 1.25rem;
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-md);
+    border-top: 1px solid var(--color-border-light);
+    /* Removed card styles as they are now on wrapper */
     transition: all var(--transition-normal);
 }
 

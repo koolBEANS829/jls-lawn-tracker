@@ -1136,13 +1136,8 @@ function updateWeeklyStats(viewOrEvents) {
     // or just show it always as a "tracker"
     const isListMode = currentView.type.includes('list');
 
-    // We'll show it if it's a list view OR if there are jobs in the current view
-    if (isListMode || hasJobs) {
-        statsBar.classList.remove('hidden');
-    } else {
-        // Optional: Hide if no jobs in month view? keeping it visible feels more like a "Command Center"
-        statsBar.classList.remove('hidden');
-    }
+    // Ensure stats bar is visible
+    statsBar.classList.remove('hidden');
 
     // Format currency
     const formatter = new Intl.NumberFormat('en-US', {
