@@ -222,13 +222,84 @@ main {
    ------------------------------------------------------------ */
 #calendar {
     position: relative;
-    min-height: 75vh;
+    height: calc(100vh - 140px);
+    min-height: 500px;
     padding: 1rem;
     background: var(--color-surface);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg), var(--shadow-glow);
     border: 1px solid var(--color-border-light);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Make FullCalendar fill the container */
+.fc {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.fc .fc-view-harness {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.fc .fc-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.fc .fc-daygrid {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.fc .fc-scrollgrid,
+.fc .fc-scrollgrid-section,
+.fc .fc-scrollgrid-section table,
+.fc .fc-scrollgrid-section>td {
+    height: 100%;
+}
+
+.fc .fc-scrollgrid-section-body>td {
+    height: 100%;
+}
+
+.fc .fc-daygrid-body {
+    flex: 1;
+}
+
+/* Make table rows stretch to fill available space evenly */
+.fc .fc-scrollgrid-sync-table {
+    height: 100% !important;
+}
+
+.fc .fc-daygrid-body-balanced .fc-daygrid-day-events {
+    position: relative;
+}
+
+/* Week rows should expand evenly */
+.fc-scrollgrid-section-body .fc-daygrid-body tr {
+    height: calc(100% / 6);
+}
+
+/* Day cells should expand to fill row */
+.fc .fc-daygrid-day-frame {
+    min-height: 100% !important;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Events container should wrap */
+.fc .fc-daygrid-day-events {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* Calendar Header Buttons */
@@ -1204,12 +1275,14 @@ button[disabled] {
     }
 
     /* ========== MOBILE CALENDAR CELLS ========== */
-    .fc .fc-daygrid-day {
-        min-height: 100px !important;
+    #calendar {
+        height: calc(100vh - 120px);
+        min-height: 400px;
+        padding: 0.5rem;
     }
 
     .fc .fc-daygrid-day-frame {
-        min-height: 95px !important;
+        min-height: unset !important;
     }
 
     .fc .fc-daygrid-day-top {
@@ -1228,9 +1301,11 @@ button[disabled] {
         display: none !important;
     }
 
-    /* Larger cells for mobile */
-    .fc .fc-daygrid-body-natural .fc-daygrid-day-events {
-        margin-bottom: 8px;
+    /* Allow events to wrap and stack vertically */
+    .fc .fc-daygrid-day-events {
+        flex: 1;
+        margin-bottom: 4px;
+        overflow-y: auto;
     }
 
     /* Clean day header (S M T W T F S) */
