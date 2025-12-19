@@ -105,7 +105,7 @@ const Storage = {
 };
 
 // ============================================================
-// API Initialization
+// API Initialization & Helpers
 // ============================================================
 
 // Track if API is available (vs local-only mode)
@@ -134,6 +134,37 @@ async function initializeAPI() {
         console.warn('⚠️ Could not reach API. Running in LOCAL MODE.', error);
         return false;
     }
+}
+
+/**
+ * Generic API wrapper to handle fetch, errors, and JSON parsing.
+ */
+async function apiCall(endpoint, options = {}) {
+    const url = endpoint.startsWith('/') ? endpoint : `${CONFIG.api.baseUrl}/${endpoint}`;
+    // If endpoint is absolute (starts with /), use it, otherwise append to base if needed.
+    // Actually CONFIG.api.baseUrl is /api/jobs.
+    // So if we pass 'cancel/123', we want /api/jobs/cancel/123.
+    // If we pass /api/jobs (base), we use it.
+
+    // Simplification: callers usually pass the full URL or we construct it.
+    // Let's just take the URL as is.
+
+    const response = await fetch(endpoint, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options
+    });
+
+    if (!response.ok) {
+        let errorMsg = 'API request failed';
+        try {
+            const error = await response.json();
+            errorMsg = error.error || errorMsg;
+        } catch (e) { /* ignore */ }
+        throw new Error(errorMsg);
+    }
+
+    if (response.status === 204) return null;
+    return response.json();
 }
 
 // ============================================================
@@ -497,15 +528,10 @@ function safeRefetchCalendar() {
  */
 async function createJobs(jobs) {
     if (apiAvailable) {
-        const response = await fetch(CONFIG.api.baseUrl, {
+        await apiCall(CONFIG.api.baseUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(jobs)
         });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to create jobs');
-        }
     } else {
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
         jobs.forEach((job, idx) => {
@@ -534,15 +560,10 @@ async function createJobs(jobs) {
  */
 async function updateJob(jobId, jobData) {
     if (apiAvailable) {
-        const response = await fetch(`${CONFIG.api.baseUrl}/${jobId}`, {
+        await apiCall(`${CONFIG.api.baseUrl}/${jobId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(jobData)
         });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to update job');
-        }
     } else {
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
         const index = existing.findIndex(j => j.id === jobId);
@@ -578,17 +599,13 @@ async function updateAllInSeries(recurringId, jobData) {
     };
 
     if (apiAvailable) {
-        const response = await fetch(`${CONFIG.api.baseUrl}/series/${recurringId}`, {
+        const result = await apiCall(`${CONFIG.api.baseUrl}/series/${recurringId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(sharedData)
         });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to update series');
-        }
-        const result = await response.json();
-        return result.updated || 0;
+        // Backend now returns { success: true, message: ... } instead of updated count
+        // Return 1 to indicate success
+        return 1;
     } else {
         // Local storage update
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
@@ -620,14 +637,9 @@ window.markJobAsDone = async function () {
 
     try {
         if (apiAvailable) {
-            const response = await fetch(`${CONFIG.api.baseUrl}/done/${currentEventId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' }
+            await apiCall(`${CONFIG.api.baseUrl}/done/${currentEventId}`, {
+                method: 'PATCH'
             });
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to mark job done');
-            }
         } else {
             const existing = Storage.get(CONFIG.storage.jobsKey) || [];
             const index = existing.findIndex(j => j.id === currentEventId);
@@ -741,14 +753,9 @@ window.confirmCancelScope = async function (scope) {
 
 async function cancelSingleJob(jobId) {
     if (apiAvailable) {
-        const response = await fetch(`${CONFIG.api.baseUrl}/cancel/${jobId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' }
+        await apiCall(`${CONFIG.api.baseUrl}/cancel/${jobId}`, {
+            method: 'PATCH'
         });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to cancel job');
-        }
     } else {
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
         const index = existing.findIndex(j => j.id === jobId);
@@ -762,27 +769,26 @@ async function cancelSingleJob(jobId) {
 
 async function cancelFutureJobs(recurringId, fromDate) {
     if (apiAvailable) {
-        const response = await fetch(
-            `${CONFIG.api.baseUrl}/cancel-future/${recurringId}/${encodeURIComponent(fromDate.toISOString())}`,
-            {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' }
-            }
+        // Use toLocalISOString to match the text-based date storage in DB
+        const result = await apiCall(
+            `${CONFIG.api.baseUrl}/cancel-future/${recurringId}/${encodeURIComponent(toLocalISOString(fromDate))}`,
+            { method: 'PATCH' }
         );
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to cancel future jobs');
-        }
-        const result = await response.json();
-        return result.cancelled || 0;
+        // Backend returns success message now
+        return result.cancelled || 1;
     } else {
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
         let count = 0;
+        // Local comparison needs to be careful with Date objects vs strings
+        const fromTime = fromDate.getTime();
         existing.forEach(job => {
-            if (job.recurring_id === recurringId && new Date(job.start) >= fromDate) {
-                job.status = 'cancelled';
-                job.classNames = getEventClasses(job.type, 'cancelled', job.is_recurring);
-                count++;
+            if (job.recurring_id === recurringId) {
+                const jobTime = new Date(job.start).getTime();
+                if (jobTime >= fromTime) {
+                    job.status = 'cancelled';
+                    job.classNames = getEventClasses(job.type, 'cancelled', job.is_recurring);
+                    count++;
+                }
             }
         });
         Storage.set(CONFIG.storage.jobsKey, existing);
@@ -792,16 +798,10 @@ async function cancelFutureJobs(recurringId, fromDate) {
 
 async function cancelEntireSeries(recurringId) {
     if (apiAvailable) {
-        const response = await fetch(`${CONFIG.api.baseUrl}/cancel-series/${recurringId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' }
+        const result = await apiCall(`${CONFIG.api.baseUrl}/cancel-series/${recurringId}`, {
+            method: 'PATCH'
         });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to cancel series');
-        }
-        const result = await response.json();
-        return result.cancelled || 0;
+        return result.cancelled || 1;
     } else {
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
         let count = 0;

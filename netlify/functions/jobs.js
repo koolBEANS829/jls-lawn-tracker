@@ -49,6 +49,7 @@ exports.handler = async (event, context) => {
 
     // Check for API key
     if (!SUPABASE_KEY) {
+        console.error('Missing SUPABASE_SERVICE_KEY environment variable');
         return {
             statusCode: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -59,9 +60,13 @@ exports.handler = async (event, context) => {
     try {
         const path = event.path.replace('/.netlify/functions/jobs', '').replace('/api/jobs', '');
         const segments = path.split('/').filter(Boolean);
+        const method = event.httpMethod;
+
+        // Common timestamp for updates
+        const timestamp = new Date().toISOString();
 
         // GET /api/jobs - Fetch all jobs
-        if (event.httpMethod === 'GET' && segments.length === 0) {
+        if (method === 'GET' && segments.length === 0) {
             const jobs = await supabaseRequest('jobs?select=*');
             return {
                 statusCode: 200,
@@ -71,7 +76,7 @@ exports.handler = async (event, context) => {
         }
 
         // POST /api/jobs - Create job(s)
-        if (event.httpMethod === 'POST' && segments.length === 0) {
+        if (method === 'POST' && segments.length === 0) {
             const body = JSON.parse(event.body);
             const jobs = Array.isArray(body) ? body : [body];
 
@@ -88,39 +93,32 @@ exports.handler = async (event, context) => {
         }
 
         // PUT /api/jobs/series/:recurringId - Update all jobs in a series
-        if (event.httpMethod === 'PUT' && segments[0] === 'series' && segments[1]) {
+        if (method === 'PUT' && segments[0] === 'series' && segments[1]) {
             const recurringId = segments[1];
             const updates = JSON.parse(event.body);
 
-            // First get all jobs in the series
-            const jobs = await supabaseRequest(`jobs?recurring_id=eq.${recurringId}&select=id`);
-
-            // Update each job with timestamp
-            let count = 0;
-            for (const job of jobs || []) {
-                await supabaseRequest(`jobs?id=eq.${job.id}`, {
-                    method: 'PATCH',
-                    body: { ...updates, updated_at: new Date().toISOString() },
-                    prefer: 'return=minimal'
-                });
-                count++;
-            }
+            // Bulk update using Supabase filtering
+            await supabaseRequest(`jobs?recurring_id=eq.${recurringId}`, {
+                method: 'PATCH',
+                body: { ...updates, updated_at: timestamp },
+                prefer: 'return=minimal'
+            });
 
             return {
                 statusCode: 200,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ updated: count })
+                body: JSON.stringify({ success: true, message: 'Series updated' })
             };
         }
 
         // PUT /api/jobs/:id - Update a single job
-        if (event.httpMethod === 'PUT' && segments[0] && segments[0] !== 'series') {
+        if (method === 'PUT' && segments[0] && segments[0] !== 'series') {
             const jobId = segments[0];
             const updates = JSON.parse(event.body);
 
             await supabaseRequest(`jobs?id=eq.${jobId}`, {
                 method: 'PATCH',
-                body: { ...updates, updated_at: new Date().toISOString() },
+                body: { ...updates, updated_at: timestamp },
                 prefer: 'return=minimal'
             });
 
@@ -132,12 +130,12 @@ exports.handler = async (event, context) => {
         }
 
         // PATCH /api/jobs/cancel/:id - Cancel a single job
-        if (event.httpMethod === 'PATCH' && segments[0] === 'cancel' && segments[1]) {
+        if (method === 'PATCH' && segments[0] === 'cancel' && segments[1]) {
             const jobId = segments[1];
 
             await supabaseRequest(`jobs?id=eq.${jobId}`, {
                 method: 'PATCH',
-                body: { status: 'cancelled', updated_at: new Date().toISOString() },
+                body: { status: 'cancelled', updated_at: timestamp },
                 prefer: 'return=minimal'
             });
 
@@ -149,61 +147,50 @@ exports.handler = async (event, context) => {
         }
 
         // PATCH /api/jobs/cancel-future/:recurringId/:fromDate - Cancel future jobs
-        if (event.httpMethod === 'PATCH' && segments[0] === 'cancel-future' && segments[1] && segments[2]) {
+        if (method === 'PATCH' && segments[0] === 'cancel-future' && segments[1] && segments[2]) {
             const recurringId = segments[1];
             const fromDate = decodeURIComponent(segments[2]);
 
-            const jobs = await supabaseRequest(
-                `jobs?recurring_id=eq.${recurringId}&start_time=gte.${fromDate}&select=id`
-            );
-
-            let count = 0;
-            for (const job of jobs || []) {
-                await supabaseRequest(`jobs?id=eq.${job.id}`, {
-                    method: 'PATCH',
-                    body: { status: 'cancelled', updated_at: new Date().toISOString() },
-                    prefer: 'return=minimal'
-                });
-                count++;
-            }
+            // Bulk update for future jobs in the series
+            // Note: start_time is stored as text (ISO format without Z), so simple string comparison works
+            // provided the input fromDate matches the format.
+            await supabaseRequest(`jobs?recurring_id=eq.${recurringId}&start_time=gte.${fromDate}`, {
+                method: 'PATCH',
+                body: { status: 'cancelled', updated_at: timestamp },
+                prefer: 'return=minimal'
+            });
 
             return {
                 statusCode: 200,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cancelled: count })
+                body: JSON.stringify({ success: true, message: 'Future jobs cancelled' })
             };
         }
 
         // PATCH /api/jobs/cancel-series/:recurringId - Cancel entire series
-        if (event.httpMethod === 'PATCH' && segments[0] === 'cancel-series' && segments[1]) {
+        if (method === 'PATCH' && segments[0] === 'cancel-series' && segments[1]) {
             const recurringId = segments[1];
 
-            const jobs = await supabaseRequest(`jobs?recurring_id=eq.${recurringId}&select=id`);
-
-            let count = 0;
-            for (const job of jobs || []) {
-                await supabaseRequest(`jobs?id=eq.${job.id}`, {
-                    method: 'PATCH',
-                    body: { status: 'cancelled', updated_at: new Date().toISOString() },
-                    prefer: 'return=minimal'
-                });
-                count++;
-            }
+            await supabaseRequest(`jobs?recurring_id=eq.${recurringId}`, {
+                method: 'PATCH',
+                body: { status: 'cancelled', updated_at: timestamp },
+                prefer: 'return=minimal'
+            });
 
             return {
                 statusCode: 200,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cancelled: count })
+                body: JSON.stringify({ success: true, message: 'Series cancelled' })
             };
         }
 
         // PATCH /api/jobs/done/:id - Mark job as done
-        if (event.httpMethod === 'PATCH' && segments[0] === 'done' && segments[1]) {
+        if (method === 'PATCH' && segments[0] === 'done' && segments[1]) {
             const jobId = segments[1];
 
             await supabaseRequest(`jobs?id=eq.${jobId}`, {
                 method: 'PATCH',
-                body: { status: 'done', updated_at: new Date().toISOString() },
+                body: { status: 'done', updated_at: timestamp },
                 prefer: 'return=minimal'
             });
 
@@ -218,7 +205,7 @@ exports.handler = async (event, context) => {
         return {
             statusCode: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ error: 'Not found', path: event.path, method: event.httpMethod })
+            body: JSON.stringify({ error: 'Not found', path: event.path, method: method })
         };
 
     } catch (error) {
