@@ -1060,21 +1060,64 @@ button[disabled] {
         padding: 0.5rem;
     }
 
-    /* FullCalendar Header - Stack on mobile */
+    /* FullCalendar Header - Reorganized for mobile */
     .fc .fc-toolbar {
-        flex-direction: column;
+        flex-wrap: wrap;
         gap: 8px;
         padding: 8px 0;
+        position: relative;
     }
 
-    .fc .fc-toolbar-chunk {
+    /* Navigation chunk (< > today) - inline with title */
+    .fc .fc-toolbar-chunk:first-child {
+        order: 1;
+        display: flex;
+        justify-content: flex-start;
+        flex: 0 0 auto;
+    }
+
+    /* Title chunk (December 2025) - middle */
+    .fc .fc-toolbar-chunk:nth-child(2) {
+        order: 2;
+        flex: 1;
         display: flex;
         justify-content: center;
+        align-items: center;
+    }
+
+    /* View buttons chunk (month/list) - fixed to bottom */
+    .fc .fc-toolbar-chunk:last-child {
+        order: 3;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        gap: 0;
+        padding: 12px 16px;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        background: var(--color-surface);
+        border-top: 1px solid var(--color-border);
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+    }
+
+    .fc .fc-toolbar-chunk:last-child .fc-button-group {
+        display: flex;
         width: 100%;
+        max-width: 300px;
+    }
+
+    .fc .fc-toolbar-chunk:last-child .fc-button {
+        flex: 1;
+        padding: 12px 16px !important;
+        font-size: var(--font-size-base) !important;
+        font-weight: 600;
     }
 
     .fc .fc-toolbar-title {
-        font-size: var(--font-size-lg) !important;
+        font-size: var(--font-size-base) !important;
         text-align: center;
     }
 
@@ -1086,6 +1129,11 @@ button[disabled] {
     .fc .fc-button-group {
         display: flex;
         gap: 2px;
+    }
+
+    /* Add bottom padding to calendar to account for fixed bottom bar */
+    #calendar {
+        padding-bottom: 80px !important;
     }
 
     /* Calendar cells - more compact */
