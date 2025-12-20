@@ -1613,6 +1613,8 @@ function initializeCalendar() {
                 right: 'dayGridMonth,listWeek'
             },
             height: 'auto',
+            dayMaxEvents: false, // Show all events, don't collapse with "+more"
+            eventOrder: 'start', // Sort by start time (earliest first at top)
             views: {
                 listWeek: {
                     listDayFormat: { weekday: 'long', month: 'short', day: 'numeric' },

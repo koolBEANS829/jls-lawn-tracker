@@ -212,6 +212,28 @@ main {
     background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%) !important;
 }
 
+/* Make day cells scrollable for multiple events */
+.fc-daygrid-day-events {
+    max-height: 120px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-primary-light) transparent;
+}
+
+.fc-daygrid-day-events::-webkit-scrollbar {
+    width: 4px;
+}
+
+.fc-daygrid-day-events::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.fc-daygrid-day-events::-webkit-scrollbar-thumb {
+    background: var(--color-primary-light);
+    border-radius: 4px;
+}
+
 /* ------------------------------------------------------------
    6. Event Styling - Polished Cards
    ------------------------------------------------------------ */
