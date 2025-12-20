@@ -1524,7 +1524,7 @@ function openJobDetails(event) {
     if (phone) {
         if (phoneRow) phoneRow.classList.remove('hidden');
         const phoneEl = document.getElementById('view-job-phone');
-        if (phoneEl) phoneEl.textContent = phone;
+        if (phoneEl) phoneEl.innerHTML = `<a href="sms:${phone}">${phone}</a>`;
         if (smsActions) smsActions.classList.remove('hidden');
 
         // Generate templated messages using job data
