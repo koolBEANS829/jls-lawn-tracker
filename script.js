@@ -33,6 +33,21 @@ console.log('--- JLS Lawn Tracker Initialized ---');
 // Configuration
 // ============================================================
 
+/**
+ * Formats a Date object as a local datetime string for datetime-local inputs.
+ * This avoids timezone conversion issues that occur with toISOString().
+ * @param {Date} date - The date to format
+ * @returns {string} Formatted as 'YYYY-MM-DDTHH:mm'
+ */
+function formatLocalDateTime(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 const CONFIG = {
     api: {
         baseUrl: '/api/jobs'  // Netlify Function handles Supabase calls
@@ -49,117 +64,80 @@ const CONFIG = {
 };
 
 // ============================================================
-// Date/Time Utilities
+// Message Templates (from LAWN CARE RESPONSES.rtf)
 // ============================================================
 
 /**
- * Formats a Date object to local ISO string (YYYY-MM-DDTHH:MM).
- * Unlike toISOString(), this preserves the local timezone.
- * Fixes the UTC offset bug where times would shift by timezone difference.
+ * Formats a date as "Mon Dec 25" style
  */
-function toLocalISOString(date) {
-    const pad = n => n.toString().padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-// ============================================================
-// SMS Templates & Variable System
-// ============================================================
-
-/**
- * SMS message templates with {{variable}} placeholders.
- * Variables: {{name}}, {{address}}, {{price}}, {{date}}, {{time}}, {{phone}}
- */
-const SMS_TEMPLATES = {
-    // Initial inquiry response
-    initial: `Thank you for reaching out to JLS Lawn Maintenance! What is your name, address and when would be a good time to come by to look at your lawn and provide you a quote?
-
-Jonathan L. Sumerlin
-Jackson L. Sumerlin
-JLS Lawn Maintenance`,
-
-    // Day-before reminder
-    remind: `REMINDER! On {{date}}, JLS Lawn Maintenance will arrive to take care of your yard. Please have your cash payment of {{price}} ready upon completion. We look forward to providing you excellent service!
-
-Jonathan L. Sumerlin
-Jackson L. Sumerlin
-JLS Lawn Maintenance`,
-
-    // Simple reminder (shorter version)
-    remindShort: `Hi {{name}}, this is JLS Lawn Care. Just a reminder we'll be by tomorrow. Thanks!`,
-
-    // Thank you / follow-up after service
-    thanks: `Thank you for allowing JLS Lawn Maintenance to care for your yard! If you feel our services warrant a review, please provide it at the link below. We look forward to the next time we can provide you excellent service!
-
-https://www.facebook.com/share/16iCjk4xax/
-
-Jonathan L. Sumerlin
-Jackson L. Sumerlin
-JLS Lawn Maintenance`,
-
-    // Short thank you
-    thanksShort: `Hi {{name}}, your lawn is done! Thanks for choosing JLS Lawn Care!`
-};
-
-/**
- * Extracts variable values from a calendar event.
- */
-function getEventVariables(event) {
-    const title = event.title || event.extendedProps?.title || 'Customer';
-    const firstName = title.split(' ')[0];
-
-    // Format date nicely
-    let dateStr = '';
-    let timeStr = '';
-    if (event.start) {
-        const startDate = new Date(event.start);
-        dateStr = startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        timeStr = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    }
-
-    // Format price with $ if present
-    const rawPrice = event.extendedProps?.price;
-    const price = rawPrice ? `$${rawPrice}` : '';
-
-    return {
-        name: firstName,
-        fullname: title.split(' - ')[0],
-        address: event.extendedProps?.address || '',
-        price: price,
-        date: dateStr,
-        time: timeStr,
-        phone: event.extendedProps?.phone || ''
-    };
+function formatDateForMessage(date) {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${days[date.getDay()]} ${months[date.getMonth()]} ${date.getDate()}`;
 }
 
 /**
- * Interpolates {{variable}} placeholders in a template with actual values.
- * @param {string} template - The template string with {{variable}} placeholders
- * @param {Object} variables - Object with variable values
- * @returns {string} - The interpolated string
+ * Formats time as "10:00 AM" style
  */
-function interpolateMessage(template, variables) {
-    return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-        const value = variables[key];
-        // Return the value if it exists, otherwise return empty string (not the placeholder)
-        return value !== undefined && value !== '' ? value : '';
-    });
+function formatTimeForMessage(date) {
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 becomes 12
+    return `${hours}:${minutes} ${ampm}`;
 }
 
 /**
- * Gets a fully interpolated SMS message for a given template and event.
- * @param {string} templateName - Key from SMS_TEMPLATES
- * @param {Object} event - Calendar event object
- * @returns {string} - Ready-to-send message
+ * Generates reminder message from template.
+ * Template: "REMINDER! On XX Xxx XX, JLS Lawn Maintenance will arrive between 
+ * XXXX - XXXX to take care of your yard. Please have your cash payment of $XX 
+ * ready upon completion. We look forward to providing you excellent service!"
  */
-function getSMSMessage(templateName, event) {
-    const template = SMS_TEMPLATES[templateName];
-    if (!template) {
-        console.warn(`Unknown SMS template: ${templateName}`);
-        return '';
-    }
-    const variables = getEventVariables(event);
-    return interpolateMessage(template, variables);
+function generateReminderMessage(event) {
+    const startDate = event.start || new Date();
+    const dateStr = formatDateForMessage(startDate);
+
+    // Create time window (arrival time + 1 hour)
+    const startTime = formatTimeForMessage(startDate);
+    const endDate = new Date(startDate);
+    endDate.setHours(endDate.getHours() + 1);
+    const endTime = formatTimeForMessage(endDate);
+
+    const price = event.extendedProps?.price || 'TBD';
+
+    return `REMINDER! On ${dateStr}, JLS Lawn Maintenance will arrive between ${startTime} - ${endTime} to take care of your yard. Please have your cash payment of $${price} ready upon completion. We look forward to providing you excellent service!
+
+Jonathan L. Sumerlin
+Jackson L. Sumerlin
+JLS Lawn Maintenance`;
+}
+
+/**
+ * Generates follow-up/thank you message from template.
+ * Template: "Thank you for allowing JLS Lawn Maintenance to care for your yard! 
+ * If you feel our services warrant a review, please provide it at the link below."
+ */
+function generateFollowUpMessage() {
+    return `Thank you for allowing JLS Lawn Maintenance to care for your yard! If you feel our services warrant a review, please provide it at the link below. We look forward to the next time we can provide you excellent service!
+
+Jonathan L. Sumerlin
+Jackson L. Sumerlin
+JLS Lawn Maintenance
+
+https://www.facebook.com/share/16iCjk4xax/`;
+}
+
+/**
+ * Generates initial inquiry response template.
+ * Template for when someone first reaches out.
+ */
+function generateInitialReplyMessage() {
+    return `Thank you reaching for out to JLS Lawn Maintenance! What is your name, address and when would be a good time to come by to look at your lawn and provide you a quote?
+
+Jonathan L. Sumerlin
+Jackson L. Sumerlin
+JLS Lawn Maintenance`;
 }
 
 // ============================================================
@@ -173,6 +151,119 @@ let currentRecurringId = null;
 let isEditMode = false;
 let selectedJobType = '';
 let editScope = 'single'; // 'single' or 'all' - for bulk editing recurring jobs
+
+// ============================================================
+// Custom Modal Utilities
+// ============================================================
+
+/**
+ * Modal type configurations with icons and titles.
+ */
+const MODAL_TYPES = {
+    success: { icon: '✅', title: 'Success', headerClass: 'success' },
+    error: { icon: '❌', title: 'Error', headerClass: 'error' },
+    warning: { icon: '⚠️', title: 'Warning', headerClass: 'warning' },
+    info: { icon: 'ℹ️', title: 'Info', headerClass: 'info' },
+    confirm: { icon: '❓', title: 'Confirm', headerClass: 'info' }
+};
+
+/**
+ * Shows a custom modal notification (replaces alert()).
+ * @param {string} message - The message to display.
+ * @param {string} type - 'success', 'error', 'warning', or 'info'.
+ * @returns {Promise<void>} Resolves when modal is closed.
+ */
+function showModal(message, type = 'info') {
+    return new Promise((resolve) => {
+        const config = MODAL_TYPES[type] || MODAL_TYPES.info;
+
+        const modal = document.getElementById('custom-modal');
+        const header = document.getElementById('custom-modal-header');
+        const title = document.getElementById('custom-modal-title');
+        const icon = document.getElementById('custom-modal-icon');
+        const msgEl = document.getElementById('custom-modal-message');
+        const confirmBtn = document.getElementById('custom-modal-confirm');
+        const cancelBtn = document.getElementById('custom-modal-cancel');
+        const closeBtn = document.getElementById('custom-modal-close');
+
+        // Configure modal
+        header.className = 'wizard-header ' + config.headerClass;
+        title.textContent = config.title;
+        icon.textContent = config.icon;
+        msgEl.textContent = message;
+        cancelBtn.classList.add('hidden');
+        confirmBtn.textContent = 'OK';
+
+        // Show modal
+        modal.classList.remove('hidden');
+
+        // Handle close
+        const close = () => {
+            modal.classList.add('hidden');
+            confirmBtn.removeEventListener('click', close);
+            closeBtn.removeEventListener('click', close);
+            resolve();
+        };
+
+        confirmBtn.addEventListener('click', close);
+        closeBtn.addEventListener('click', close);
+    });
+}
+
+/**
+ * Shows a custom confirmation modal (replaces confirm()).
+ * @param {string} message - The confirmation message.
+ * @param {string} type - Modal type for styling (default: 'confirm').
+ * @returns {Promise<boolean>} Resolves true if confirmed, false if cancelled.
+ */
+function showConfirm(message, type = 'confirm') {
+    return new Promise((resolve) => {
+        const config = MODAL_TYPES[type] || MODAL_TYPES.confirm;
+
+        const modal = document.getElementById('custom-modal');
+        const header = document.getElementById('custom-modal-header');
+        const title = document.getElementById('custom-modal-title');
+        const icon = document.getElementById('custom-modal-icon');
+        const msgEl = document.getElementById('custom-modal-message');
+        const confirmBtn = document.getElementById('custom-modal-confirm');
+        const cancelBtn = document.getElementById('custom-modal-cancel');
+        const closeBtn = document.getElementById('custom-modal-close');
+
+        // Configure modal
+        header.className = 'wizard-header ' + config.headerClass;
+        title.textContent = config.title;
+        icon.textContent = config.icon;
+        msgEl.textContent = message;
+        cancelBtn.classList.remove('hidden');
+        confirmBtn.textContent = 'Yes';
+        cancelBtn.textContent = 'No';
+
+        // Show modal
+        modal.classList.remove('hidden');
+
+        // Handle responses
+        const handleConfirm = () => {
+            cleanup();
+            resolve(true);
+        };
+
+        const handleCancel = () => {
+            cleanup();
+            resolve(false);
+        };
+
+        const cleanup = () => {
+            modal.classList.add('hidden');
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            closeBtn.removeEventListener('click', handleCancel);
+        };
+
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+        closeBtn.addEventListener('click', handleCancel);
+    });
+}
 
 // ============================================================
 // Storage Utilities
@@ -199,7 +290,7 @@ const Storage = {
             return true;
         } catch (error) {
             console.error('Storage Write Error:', error);
-            alert('WARNING: Could not save data. Private browsing mode?');
+            showModal('Could not save data. Private browsing mode?', 'warning');
             return false;
         }
     }
@@ -528,7 +619,7 @@ window.saveJob = async function () {
 
         const job = {
             title: eventTitle,
-            start_time: toLocalISOString(jobDate),
+            start_time: formatLocalDateTime(jobDate),
             job_type: selectedJobType,
             notes: formData.notes,
             price: formData.price || null,
@@ -553,16 +644,16 @@ window.saveJob = async function () {
             if (editScope === 'all' && currentRecurringId) {
                 // Bulk update all jobs in the series
                 const count = await updateAllInSeries(currentRecurringId, jobsToCreate[0]);
-                alert(`Updated ${count} job(s) in the series!`);
+                await showModal(`Updated ${count} job(s) in the series!`, 'success');
             } else {
                 // Single job update
                 await updateJob(currentEventId, jobsToCreate[0]);
-                alert('Job Updated!');
+                await showModal('Job Updated!', 'success');
             }
         } else {
             await createJobs(jobsToCreate);
             const jobWord = jobsToCreate.length > 1 ? 'Jobs' : 'Job';
-            alert(`${jobsToCreate.length} ${jobWord} Scheduled!`);
+            await showModal(`${jobsToCreate.length} ${jobWord} Scheduled!`, 'success');
         }
 
         // Save address to history for autocomplete
@@ -576,7 +667,7 @@ window.saveJob = async function () {
         editScope = 'single'; // Reset edit scope
     } catch (error) {
         console.error('Save error:', error);
-        alert('Error saving: ' + (error?.message || 'Unknown error'));
+        await showModal('Error saving: ' + (error?.message || 'Unknown error'), 'error');
     }
 };
 
@@ -717,7 +808,8 @@ async function updateAllInSeries(recurringId, jobData) {
  */
 window.markJobAsDone = async function () {
     if (!currentEventId) return;
-    if (!confirm('Mark this job as DONE?')) return;
+    const confirmed = await showConfirm('Mark this job as DONE?');
+    if (!confirmed) return;
 
     try {
         if (apiAvailable) {
@@ -743,7 +835,7 @@ window.markJobAsDone = async function () {
         closeJobDetails();
     } catch (error) {
         console.error('Mark done error:', error);
-        alert('Error updating: ' + (error?.message || 'Unknown error'));
+        await showModal('Error updating: ' + (error?.message || 'Unknown error'), 'error');
     }
 };
 
@@ -818,20 +910,20 @@ window.confirmCancelScope = async function (scope) {
 
     try {
         if (scope === 'single') {
-            await cancelSingleJob(currentEventId);
-            alert('Job cancelled!');
+            await deleteSingleJob(currentEventId);
+            await showModal('Job deleted!', 'success');
         } else if (scope === 'future' && pendingCancelRecurringId) {
-            const count = await cancelFutureJobs(pendingCancelRecurringId, pendingCancelDate);
-            alert(`Cancelled ${count} job(s)!`);
+            const count = await deleteFutureJobs(pendingCancelRecurringId, pendingCancelDate);
+            await showModal(`Deleted ${count} job(s)!`, 'success');
         } else if (scope === 'all' && pendingCancelRecurringId) {
-            const count = await cancelEntireSeries(pendingCancelRecurringId);
-            alert(`Cancelled all ${count} job(s) in series!`);
+            const count = await deleteEntireSeries(pendingCancelRecurringId);
+            await showModal(`Deleted all ${count} job(s) in series!`, 'success');
         }
 
         safeRefetchCalendar();
     } catch (error) {
-        console.error('Cancel error:', error);
-        alert('Error cancelling: ' + (error?.message || 'Unknown error'));
+        console.error('Delete error:', error);
+        await showModal('Error deleting: ' + (error?.message || 'Unknown error'), 'error');
     }
 
     // Reset state
@@ -840,7 +932,7 @@ window.confirmCancelScope = async function (scope) {
     pendingCancelIsRecurring = false;
 };
 
-async function cancelSingleJob(jobId) {
+async function deleteSingleJob(jobId) {
     if (apiAvailable) {
         const response = await fetch(`${CONFIG.api.baseUrl}/delete/${jobId}`, {
             method: 'DELETE',
@@ -851,17 +943,16 @@ async function cancelSingleJob(jobId) {
             throw new Error(error.error || 'Failed to delete job');
         }
     } else {
-        // Local storage: remove the job entirely
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
         const filtered = existing.filter(j => j.id !== jobId);
         Storage.set(CONFIG.storage.jobsKey, filtered);
     }
 }
 
-async function cancelFutureJobs(recurringId, fromDate) {
+async function deleteFutureJobs(recurringId, fromDate) {
     if (apiAvailable) {
         const response = await fetch(
-            `${CONFIG.api.baseUrl}/delete-future/${recurringId}/${encodeURIComponent(toLocalISOString(fromDate))}`,
+            `${CONFIG.api.baseUrl}/delete-future/${recurringId}/${encodeURIComponent(fromDate.toISOString())}`,
             {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' }
@@ -874,21 +965,17 @@ async function cancelFutureJobs(recurringId, fromDate) {
         const result = await response.json();
         return result.deleted || 0;
     } else {
-        // Local storage: remove future jobs entirely
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
-        const filtered = existing.filter(job => {
-            if (job.recurring_id === recurringId && new Date(job.start) >= fromDate) {
-                return false; // Remove this job
-            }
-            return true;
-        });
+        const filtered = existing.filter(job =>
+            !(job.recurring_id === recurringId && new Date(job.start) >= fromDate)
+        );
         const count = existing.length - filtered.length;
         Storage.set(CONFIG.storage.jobsKey, filtered);
         return count;
     }
 }
 
-async function cancelEntireSeries(recurringId) {
+async function deleteEntireSeries(recurringId) {
     if (apiAvailable) {
         const response = await fetch(`${CONFIG.api.baseUrl}/delete-series/${recurringId}`, {
             method: 'DELETE',
@@ -901,7 +988,6 @@ async function cancelEntireSeries(recurringId) {
         const result = await response.json();
         return result.deleted || 0;
     } else {
-        // Local storage: remove all jobs in series entirely
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
         const filtered = existing.filter(job => job.recurring_id !== recurringId);
         const count = existing.length - filtered.length;
@@ -1193,9 +1279,9 @@ window.toggleRecurringOptions = function () {
 // Store event data temporarily when showing scope modal
 let pendingEditEvent = null;
 
-window.editJob = function () {
+window.editJob = async function () {
     if (!currentEventId) {
-        alert('No job selected to edit.');
+        await showModal('No job selected to edit.', 'error');
         return;
     }
 
@@ -1207,7 +1293,7 @@ window.editJob = function () {
     }
 
     if (!event) {
-        alert('Could not load job details for editing.');
+        await showModal('Could not load job details for editing.', 'error');
         return;
     }
 
@@ -1245,7 +1331,7 @@ window.selectEditScope = function (scope) {
 /**
  * Opens the wizard in edit mode with the given event data.
  */
-function openEditWizard(event) {
+async function openEditWizard(event) {
     try {
         isEditMode = true;
 
@@ -1269,7 +1355,7 @@ function openEditWizard(event) {
         const dateEl = document.getElementById('wizard-date');
         if (dateEl && event.start) {
             try {
-                dateEl.value = toLocalISOString(new Date(event.start));
+                dateEl.value = formatLocalDateTime(new Date(event.start));
             } catch (e) {
                 console.warn('Date parsing error:', e);
                 dateEl.value = '';
@@ -1321,14 +1407,14 @@ function openEditWizard(event) {
         if (wizardOverlay) wizardOverlay.classList.remove('hidden');
     } catch (error) {
         console.error('Error opening edit mode:', error);
-        alert('Error: Could not open edit form.');
+        await showModal('Could not open edit form.', 'error');
         isEditMode = false;
     }
 }
 
-function openWizard() {
+async function openWizard() {
     if (!apiAvailable && Storage.get(CONFIG.storage.jobsKey) === null) {
-        alert('NOTE: Cloud Sync not available. Data saved locally only.');
+        await showModal('Cloud Sync not available. Data saved locally only.', 'info');
     }
 
     isEditMode = false;
@@ -1441,9 +1527,9 @@ function openJobDetails(event) {
         if (phoneEl) phoneEl.textContent = phone;
         if (smsActions) smsActions.classList.remove('hidden');
 
-        // Use template system for SMS messages
-        const remindMsg = getSMSMessage('remindShort', event);
-        const thanksMsg = getSMSMessage('thanksShort', event);
+        // Generate templated messages using job data
+        const remindMsg = generateReminderMessage(event);
+        const thanksMsg = generateFollowUpMessage();
 
         const smsRemindBtn = document.getElementById('btn-sms-remind');
         const smsThanksBtn = document.getElementById('btn-sms-thanks');

@@ -176,20 +176,9 @@
                     <div class="detail-row"><strong>Price:</strong> <span id="view-job-price">...</span></div>
                     <div class="detail-row" id="view-job-phone-row"><strong>Phone:</strong> <span
                             id="view-job-phone">...</span></div>
-                    <div class="sms-actions prompt-cards-container">
-                        <p class="sms-section-label">Quick Messages</p>
-                        <div class="prompt-cards">
-                            <a id="btn-sms-remind" href="#" class="prompt-card remind">
-                                <span class="prompt-icon">📲</span>
-                                <span class="prompt-label">Remind</span>
-                                <span class="prompt-desc">Tomorrow reminder</span>
-                            </a>
-                            <a id="btn-sms-thanks" href="#" class="prompt-card thanks">
-                                <span class="prompt-icon">⭐</span>
-                                <span class="prompt-label">Thank You</span>
-                                <span class="prompt-desc">Service complete</span>
-                            </a>
-                        </div>
+                    <div class="sms-actions">
+                        <a id="btn-sms-remind" href="#" class="btn-sms remind">📲 Remind</a>
+                        <a id="btn-sms-thanks" href="#" class="btn-sms thanks">⭐ Thank You</a>
                     </div>
                     <div class="detail-row"><strong>Notes:</strong>
                         <p id="view-job-notes" class="notes-box">No notes.</p>
@@ -201,6 +190,23 @@
                     <button id="btn-edit-job" type="button" class="btn-edit" onclick="editJob()">EDIT</button>
                     <button id="btn-mark-done" type="button" class="btn-complete" onclick="markJobAsDone()">MARK AS
                         DONE</button>
+                </div>
+            </div>
+        </div>
+        <!-- Custom Notification/Confirmation Modal -->
+        <div id="custom-modal" class="wizard-overlay hidden">
+            <div class="wizard-card custom-modal-card">
+                <div class="wizard-header" id="custom-modal-header">
+                    <h2 id="custom-modal-title">Message</h2>
+                    <span id="custom-modal-close" class="close-btn">&times;</span>
+                </div>
+                <div class="custom-modal-content">
+                    <div id="custom-modal-icon" class="custom-modal-icon"></div>
+                    <p id="custom-modal-message" class="custom-modal-message"></p>
+                </div>
+                <div class="custom-modal-actions" id="custom-modal-actions">
+                    <button type="button" class="btn-modal-cancel hidden" id="custom-modal-cancel">Cancel</button>
+                    <button type="button" class="btn-modal-confirm" id="custom-modal-confirm">OK</button>
                 </div>
             </div>
         </div>
