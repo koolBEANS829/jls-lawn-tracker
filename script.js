@@ -49,6 +49,120 @@ const CONFIG = {
 };
 
 // ============================================================
+// Date/Time Utilities
+// ============================================================
+
+/**
+ * Formats a Date object to local ISO string (YYYY-MM-DDTHH:MM).
+ * Unlike toISOString(), this preserves the local timezone.
+ * Fixes the UTC offset bug where times would shift by timezone difference.
+ */
+function toLocalISOString(date) {
+    const pad = n => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+// ============================================================
+// SMS Templates & Variable System
+// ============================================================
+
+/**
+ * SMS message templates with {{variable}} placeholders.
+ * Variables: {{name}}, {{address}}, {{price}}, {{date}}, {{time}}, {{phone}}
+ */
+const SMS_TEMPLATES = {
+    // Initial inquiry response
+    initial: `Thank you for reaching out to JLS Lawn Maintenance! What is your name, address and when would be a good time to come by to look at your lawn and provide you a quote?
+
+Jonathan L. Sumerlin
+Jackson L. Sumerlin
+JLS Lawn Maintenance`,
+
+    // Day-before reminder
+    remind: `REMINDER! On {{date}}, JLS Lawn Maintenance will arrive to take care of your yard. Please have your cash payment of {{price}} ready upon completion. We look forward to providing you excellent service!
+
+Jonathan L. Sumerlin
+Jackson L. Sumerlin
+JLS Lawn Maintenance`,
+
+    // Simple reminder (shorter version)
+    remindShort: `Hi {{name}}, this is JLS Lawn Care. Just a reminder we'll be by tomorrow. Thanks!`,
+
+    // Thank you / follow-up after service
+    thanks: `Thank you for allowing JLS Lawn Maintenance to care for your yard! If you feel our services warrant a review, please provide it at the link below. We look forward to the next time we can provide you excellent service!
+
+https://www.facebook.com/share/16iCjk4xax/
+
+Jonathan L. Sumerlin
+Jackson L. Sumerlin
+JLS Lawn Maintenance`,
+
+    // Short thank you
+    thanksShort: `Hi {{name}}, your lawn is done! Thanks for choosing JLS Lawn Care!`
+};
+
+/**
+ * Extracts variable values from a calendar event.
+ */
+function getEventVariables(event) {
+    const title = event.title || event.extendedProps?.title || 'Customer';
+    const firstName = title.split(' ')[0];
+
+    // Format date nicely
+    let dateStr = '';
+    let timeStr = '';
+    if (event.start) {
+        const startDate = new Date(event.start);
+        dateStr = startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        timeStr = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+
+    // Format price with $ if present
+    const rawPrice = event.extendedProps?.price;
+    const price = rawPrice ? `$${rawPrice}` : '';
+
+    return {
+        name: firstName,
+        fullname: title.split(' - ')[0],
+        address: event.extendedProps?.address || '',
+        price: price,
+        date: dateStr,
+        time: timeStr,
+        phone: event.extendedProps?.phone || ''
+    };
+}
+
+/**
+ * Interpolates {{variable}} placeholders in a template with actual values.
+ * @param {string} template - The template string with {{variable}} placeholders
+ * @param {Object} variables - Object with variable values
+ * @returns {string} - The interpolated string
+ */
+function interpolateMessage(template, variables) {
+    return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+        const value = variables[key];
+        // Return the value if it exists, otherwise return empty string (not the placeholder)
+        return value !== undefined && value !== '' ? value : '';
+    });
+}
+
+/**
+ * Gets a fully interpolated SMS message for a given template and event.
+ * @param {string} templateName - Key from SMS_TEMPLATES
+ * @param {Object} event - Calendar event object
+ * @returns {string} - Ready-to-send message
+ */
+function getSMSMessage(templateName, event) {
+    const template = SMS_TEMPLATES[templateName];
+    if (!template) {
+        console.warn(`Unknown SMS template: ${templateName}`);
+        return '';
+    }
+    const variables = getEventVariables(event);
+    return interpolateMessage(template, variables);
+}
+
+// ============================================================
 // Global State
 // ============================================================
 
@@ -414,7 +528,7 @@ window.saveJob = async function () {
 
         const job = {
             title: eventTitle,
-            start_time: jobDate.toISOString().slice(0, 16),
+            start_time: toLocalISOString(jobDate),
             job_type: selectedJobType,
             notes: formData.notes,
             price: formData.price || null,
@@ -728,78 +842,70 @@ window.confirmCancelScope = async function (scope) {
 
 async function cancelSingleJob(jobId) {
     if (apiAvailable) {
-        const response = await fetch(`${CONFIG.api.baseUrl}/cancel/${jobId}`, {
-            method: 'PATCH',
+        const response = await fetch(`${CONFIG.api.baseUrl}/delete/${jobId}`, {
+            method: 'DELETE',
             headers: { 'Content-Type': 'application/json' }
         });
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.error || 'Failed to cancel job');
+            throw new Error(error.error || 'Failed to delete job');
         }
     } else {
+        // Local storage: remove the job entirely
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
-        const index = existing.findIndex(j => j.id === jobId);
-        if (index > -1) {
-            existing[index].status = 'cancelled';
-            existing[index].classNames = getEventClasses(existing[index].type, 'cancelled', existing[index].is_recurring);
-            Storage.set(CONFIG.storage.jobsKey, existing);
-        }
+        const filtered = existing.filter(j => j.id !== jobId);
+        Storage.set(CONFIG.storage.jobsKey, filtered);
     }
 }
 
 async function cancelFutureJobs(recurringId, fromDate) {
     if (apiAvailable) {
         const response = await fetch(
-            `${CONFIG.api.baseUrl}/cancel-future/${recurringId}/${encodeURIComponent(fromDate.toISOString())}`,
+            `${CONFIG.api.baseUrl}/delete-future/${recurringId}/${encodeURIComponent(toLocalISOString(fromDate))}`,
             {
-                method: 'PATCH',
+                method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' }
             }
         );
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.error || 'Failed to cancel future jobs');
+            throw new Error(error.error || 'Failed to delete future jobs');
         }
         const result = await response.json();
-        return result.cancelled || 0;
+        return result.deleted || 0;
     } else {
+        // Local storage: remove future jobs entirely
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
-        let count = 0;
-        existing.forEach(job => {
+        const filtered = existing.filter(job => {
             if (job.recurring_id === recurringId && new Date(job.start) >= fromDate) {
-                job.status = 'cancelled';
-                job.classNames = getEventClasses(job.type, 'cancelled', job.is_recurring);
-                count++;
+                return false; // Remove this job
             }
+            return true;
         });
-        Storage.set(CONFIG.storage.jobsKey, existing);
+        const count = existing.length - filtered.length;
+        Storage.set(CONFIG.storage.jobsKey, filtered);
         return count;
     }
 }
 
 async function cancelEntireSeries(recurringId) {
     if (apiAvailable) {
-        const response = await fetch(`${CONFIG.api.baseUrl}/cancel-series/${recurringId}`, {
-            method: 'PATCH',
+        const response = await fetch(`${CONFIG.api.baseUrl}/delete-series/${recurringId}`, {
+            method: 'DELETE',
             headers: { 'Content-Type': 'application/json' }
         });
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.error || 'Failed to cancel series');
+            throw new Error(error.error || 'Failed to delete series');
         }
         const result = await response.json();
-        return result.cancelled || 0;
+        return result.deleted || 0;
     } else {
+        // Local storage: remove all jobs in series entirely
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
-        let count = 0;
-        existing.forEach(job => {
-            if (job.recurring_id === recurringId) {
-                job.status = 'cancelled';
-                job.classNames = getEventClasses(job.type, 'cancelled', job.is_recurring);
-                count++;
-            }
-        });
-        Storage.set(CONFIG.storage.jobsKey, existing);
+        const filtered = existing.filter(job => job.recurring_id !== recurringId);
+        const count = existing.length - filtered.length;
+        Storage.set(CONFIG.storage.jobsKey, filtered);
         return count;
     }
 }
@@ -1163,7 +1269,7 @@ function openEditWizard(event) {
         const dateEl = document.getElementById('wizard-date');
         if (dateEl && event.start) {
             try {
-                dateEl.value = new Date(event.start).toISOString().slice(0, 16);
+                dateEl.value = toLocalISOString(new Date(event.start));
             } catch (e) {
                 console.warn('Date parsing error:', e);
                 dateEl.value = '';
@@ -1335,9 +1441,9 @@ function openJobDetails(event) {
         if (phoneEl) phoneEl.textContent = phone;
         if (smsActions) smsActions.classList.remove('hidden');
 
-        const firstName = (event.title || 'Customer').split(' ')[0];
-        const remindMsg = `Hi ${firstName}, this is JLS Lawn Care. Just a reminder we'll be by tomorrow. Thanks!`;
-        const thanksMsg = `Hi ${firstName}, your lawn is done! Thanks for choosing JLS Lawn Care!`;
+        // Use template system for SMS messages
+        const remindMsg = getSMSMessage('remindShort', event);
+        const thanksMsg = getSMSMessage('thanksShort', event);
 
         const smsRemindBtn = document.getElementById('btn-sms-remind');
         const smsThanksBtn = document.getElementById('btn-sms-thanks');

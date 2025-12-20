@@ -34,6 +34,31 @@ async function supabaseRequest(path, options = {}) {
     return response.json();
 }
 
+/**
+ * Archives a job before deletion.
+ * Copies the job data to job_archives table, then deletes from jobs table.
+ * @param {Object} job - The full job object to archive
+ * @param {string} reason - Reason for deletion (e.g., 'cancelled', 'cancelled_future', 'cancelled_series')
+ */
+async function archiveAndDeleteJob(job, reason = 'cancelled') {
+    // Insert into archives
+    await supabaseRequest('job_archives', {
+        method: 'POST',
+        body: {
+            id: job.id,
+            deleted_reason: reason,
+            original_data: job
+        },
+        prefer: 'return=minimal'
+    });
+
+    // Delete from jobs
+    await supabaseRequest(`jobs?id=eq.${job.id}`, {
+        method: 'DELETE',
+        prefer: 'return=minimal'
+    });
+}
+
 // CORS headers for all responses
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -131,69 +156,63 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // PATCH /api/jobs/cancel/:id - Cancel a single job
-        if (event.httpMethod === 'PATCH' && segments[0] === 'cancel' && segments[1]) {
+        // DELETE /api/jobs/delete/:id - Archive and delete a single job
+        if (event.httpMethod === 'DELETE' && segments[0] === 'delete' && segments[1]) {
             const jobId = segments[1];
 
-            await supabaseRequest(`jobs?id=eq.${jobId}`, {
-                method: 'PATCH',
-                body: { status: 'cancelled', updated_at: new Date().toISOString() },
-                prefer: 'return=minimal'
-            });
+            // Fetch the full job data first
+            const jobs = await supabaseRequest(`jobs?id=eq.${jobId}&select=*`);
+            if (jobs && jobs.length > 0) {
+                await archiveAndDeleteJob(jobs[0], 'cancelled');
+            }
 
             return {
                 statusCode: 200,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ success: true })
+                body: JSON.stringify({ success: true, deleted: 1 })
             };
         }
 
-        // PATCH /api/jobs/cancel-future/:recurringId/:fromDate - Cancel future jobs
-        if (event.httpMethod === 'PATCH' && segments[0] === 'cancel-future' && segments[1] && segments[2]) {
+        // DELETE /api/jobs/delete-future/:recurringId/:fromDate - Archive and delete future jobs
+        if (event.httpMethod === 'DELETE' && segments[0] === 'delete-future' && segments[1] && segments[2]) {
             const recurringId = segments[1];
             const fromDate = decodeURIComponent(segments[2]);
 
+            // Fetch full job data for all future jobs
             const jobs = await supabaseRequest(
-                `jobs?recurring_id=eq.${recurringId}&start_time=gte.${fromDate}&select=id`
+                `jobs?recurring_id=eq.${recurringId}&start_time=gte.${fromDate}&select=*`
             );
 
             let count = 0;
             for (const job of jobs || []) {
-                await supabaseRequest(`jobs?id=eq.${job.id}`, {
-                    method: 'PATCH',
-                    body: { status: 'cancelled', updated_at: new Date().toISOString() },
-                    prefer: 'return=minimal'
-                });
+                await archiveAndDeleteJob(job, 'cancelled_future');
                 count++;
             }
 
             return {
                 statusCode: 200,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cancelled: count })
+                body: JSON.stringify({ deleted: count })
             };
         }
 
-        // PATCH /api/jobs/cancel-series/:recurringId - Cancel entire series
-        if (event.httpMethod === 'PATCH' && segments[0] === 'cancel-series' && segments[1]) {
+        // DELETE /api/jobs/delete-series/:recurringId - Archive and delete entire series
+        if (event.httpMethod === 'DELETE' && segments[0] === 'delete-series' && segments[1]) {
             const recurringId = segments[1];
 
-            const jobs = await supabaseRequest(`jobs?recurring_id=eq.${recurringId}&select=id`);
+            // Fetch full job data for all jobs in series
+            const jobs = await supabaseRequest(`jobs?recurring_id=eq.${recurringId}&select=*`);
 
             let count = 0;
             for (const job of jobs || []) {
-                await supabaseRequest(`jobs?id=eq.${job.id}`, {
-                    method: 'PATCH',
-                    body: { status: 'cancelled', updated_at: new Date().toISOString() },
-                    prefer: 'return=minimal'
-                });
+                await archiveAndDeleteJob(job, 'cancelled_series');
                 count++;
             }
 
             return {
                 statusCode: 200,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cancelled: count })
+                body: JSON.stringify({ deleted: count })
             };
         }
 
