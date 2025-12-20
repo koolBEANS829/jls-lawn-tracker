@@ -98,10 +98,10 @@ function generateReminderMessage(event) {
     const startDate = event.start || new Date();
     const dateStr = formatDateForMessage(startDate);
 
-    // Create time window (arrival time + 1 hour)
+    // Create time window (arrival time + 30 minutes)
     const startTime = formatTimeForMessage(startDate);
     const endDate = new Date(startDate);
-    endDate.setHours(endDate.getHours() + 1);
+    endDate.setMinutes(endDate.getMinutes() + 30);
     const endTime = formatTimeForMessage(endDate);
 
     const price = event.extendedProps?.price || 'TBD';
