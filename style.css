@@ -212,26 +212,17 @@ main {
     background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%) !important;
 }
 
-/* Make day cells scrollable for multiple events */
+/* Day cells - show all events stacked, expand naturally */
 .fc-daygrid-day-events {
-    max-height: 120px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-primary-light) transparent;
+    min-height: auto;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
 }
 
-.fc-daygrid-day-events::-webkit-scrollbar {
-    width: 4px;
-}
-
-.fc-daygrid-day-events::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.fc-daygrid-day-events::-webkit-scrollbar-thumb {
-    background: var(--color-primary-light);
-    border-radius: 4px;
+/* Ensure each event wraps and stacks properly */
+.fc-daygrid-event-harness {
+    margin-top: 1px !important;
 }
 
 /* ------------------------------------------------------------
