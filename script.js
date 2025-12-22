@@ -1640,6 +1640,17 @@ function initializeCalendar() {
                 } else {
                     document.body.classList.remove('view-list');
                 }
+
+                // Check for overflow in day cells and add fade indicator
+                setTimeout(() => {
+                    document.querySelectorAll('.fc-daygrid-day-events').forEach(el => {
+                        if (el.scrollHeight > el.clientHeight) {
+                            el.classList.add('has-overflow');
+                        } else {
+                            el.classList.remove('has-overflow');
+                        }
+                    });
+                }, 100);
             }
             // Note: windowResize handler removed - was causing list view to reset on mobile
         });
