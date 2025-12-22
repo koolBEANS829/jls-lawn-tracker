@@ -1586,60 +1586,6 @@ function closeJobDetails() {
 window.closeJobDetails = closeJobDetails;
 
 // ============================================================
-// Job Count Badge - Shows active job count per day
-// ============================================================
-
-function updateJobCountBadges() {
-    if (typeof calendar === 'undefined' || !calendar) return;
-
-    // Get all events from calendar
-    const events = calendar.getEvents();
-
-    // Group active jobs by date (exclude completed and "No Jobs" placeholders)
-    const jobsByDate = {};
-    events.forEach(event => {
-        // Skip "No Jobs" placeholders and completed/done jobs
-        if (event.title === 'No Jobs') return;
-        const status = event.extendedProps?.status;
-        if (status === 'completed' || status === 'done') return;
-
-        const dateStr = event.startStr?.split('T')[0];
-        if (!dateStr) return;
-
-        if (!jobsByDate[dateStr]) {
-            jobsByDate[dateStr] = 0;
-        }
-        jobsByDate[dateStr]++;
-    });
-
-    // Update or create badges for each day cell
-    document.querySelectorAll('.fc-daygrid-day').forEach(cell => {
-        const date = cell.getAttribute('data-date');
-        const count = jobsByDate[date] || 0;
-
-        // Remove existing badge
-        const existingBadge = cell.querySelector('.job-count-badge');
-        if (existingBadge) {
-            existingBadge.remove();
-        }
-
-        // Only show badge if 2+ active jobs
-        if (count >= 2) {
-            const badge = document.createElement('div');
-            badge.className = 'job-count-badge';
-            badge.textContent = count;
-            badge.title = `${count} active jobs`;
-
-            // Insert badge in the day top area
-            const dayTop = cell.querySelector('.fc-daygrid-day-top');
-            if (dayTop) {
-                dayTop.insertBefore(badge, dayTop.firstChild);
-            }
-        }
-    });
-}
-
-// ============================================================
 // Calendar Initialization
 // ============================================================
 
@@ -1704,13 +1650,7 @@ function initializeCalendar() {
                             el.classList.remove('has-overflow');
                         }
                     });
-
-                    // Update job count badges
-                    updateJobCountBadges();
                 }, 100);
-            },
-            dayCellDidMount: (arg) => {
-                // Badge will be updated via updateJobCountBadges after events load
             }
             // Note: windowResize handler removed - was causing list view to reset on mobile
         });

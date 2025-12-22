@@ -212,23 +212,6 @@ main {
     background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%) !important;
 }
 
-/* Job count badge in top-left of day cells */
-.job-count-badge {
-    background: var(--color-primary);
-    color: white;
-    font-size: 10px;
-    font-weight: 700;
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: auto;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
 /* Day cells - uniform height with scrollable events */
 .fc-daygrid-day-frame {
     min-height: 100px;
