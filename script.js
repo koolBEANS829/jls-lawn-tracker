@@ -1774,14 +1774,13 @@ function closeSettingsModal() {
 }
 
 /**
- * Injects the settings gear button into the calendar toolbar.
- * Called after calendar renders.
+ * Injects the settings gear button into the calendar container.
+ * Positioned absolutely in top-right corner.
  */
 function injectSettingsButton() {
-    // Find the right side of the toolbar (where Month/Week buttons are)
-    const toolbarRight = document.querySelector('.fc-toolbar-chunk:last-child');
+    const calendarEl = document.getElementById('calendar');
 
-    if (toolbarRight && !document.getElementById('settings-gear-btn')) {
+    if (calendarEl && !document.getElementById('settings-gear-btn')) {
         const gearBtn = document.createElement('button');
         gearBtn.id = 'settings-gear-btn';
         gearBtn.className = 'settings-gear-btn';
@@ -1789,7 +1788,7 @@ function injectSettingsButton() {
         gearBtn.title = 'Team Settings';
         gearBtn.onclick = openSettingsModal;
 
-        toolbarRight.appendChild(gearBtn);
+        calendarEl.appendChild(gearBtn);
     }
 }
 
