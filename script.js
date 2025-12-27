@@ -1816,9 +1816,22 @@ function buildGroupSmsHref(customerPhone, messageBody) {
         recipients.push(...ccList);
     }
 
+    // Debug logging
+    console.log('📱 SMS Recipients:', recipients);
+    console.log('📱 Team Phones from storage:', teamPhones);
+
     // Join all numbers with commas for group MMS
+    // iOS format: sms:/open?addresses=num1,num2,num3&body=message
+    // Fallback format: sms:num1,num2,num3?body=message (works on most Android)
     const recipientString = recipients.join(',');
 
+    // Use iOS-compatible format with /open?addresses= for multiple recipients
+    if (recipients.length > 1) {
+        // iOS needs this format for multiple recipients
+        return `sms:/open?addresses=${recipientString}&body=${encodeURIComponent(messageBody)}`;
+    }
+
+    // Single recipient - standard format
     return `sms:${recipientString}?body=${encodeURIComponent(messageBody)}`;
 }
 
