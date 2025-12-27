@@ -1660,6 +1660,8 @@ button[disabled] {
 
 /* Settings gear button in calendar toolbar */
 .settings-gear-btn {
+    position: relative;
+    z-index: 101;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1667,19 +1669,19 @@ button[disabled] {
     height: 40px;
     margin-left: 8px;
     font-size: 1.25rem;
-    background: transparent;
+    background: var(--color-surface);
     border: 2px solid var(--color-border);
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all var(--transition-fast);
-    opacity: 0.7;
+    box-shadow: var(--shadow-sm);
 }
 
 .settings-gear-btn:hover {
-    opacity: 1;
     border-color: var(--color-primary);
     background: var(--color-bg-secondary);
     transform: rotate(45deg);
+    box-shadow: var(--shadow-md);
 }
 
 /* Hide gear button in list view */
