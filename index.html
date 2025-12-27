@@ -210,40 +210,6 @@
                 </div>
             </div>
         </div>
-        <!-- Settings Modal -->
-        <div id="settings-modal" class="wizard-overlay hidden">
-            <div class="wizard-card settings-card">
-                <div class="wizard-header">
-                    <h2>⚙️ Team Settings</h2>
-                    <span id="settings-close" class="close-btn">&times;</span>
-                </div>
-                <div class="settings-content">
-                    <p class="settings-desc">Enter phone numbers to include in customer messages. All numbers will be
-                        CC'd when sending reminders or thank you messages.</p>
-                    <div class="form-group-large" id="your-phone-group">
-                        <label for="settings-your-phone">Your Number</label>
-                        <!-- Locked state (shown when number is saved) -->
-                        <div id="your-phone-locked" class="locked-phone-display hidden">
-                            <span class="locked-phone-value">
-                                <span class="locked-check">✓</span>
-                                <span id="your-phone-display"></span>
-                            </span>
-                            <button type="button" class="btn-edit-phone" onclick="unlockYourPhone()">Edit</button>
-                        </div>
-                        <!-- Unlocked state (input mode) -->
-                        <input type="tel" id="settings-your-phone" placeholder="e.g. 555-123-4567" inputmode="tel">
-                    </div>
-                    <div class="form-group-large">
-                        <label for="settings-cc-phones">Other Numbers to CC</label>
-                        <input type="text" id="settings-cc-phones" placeholder="e.g. 555-111-2222, 555-333-4444">
-                        <small class="field-hint">Separate multiple numbers with commas</small>
-                    </div>
-                    <div class="settings-actions">
-                        <button type="button" class="btn-save" onclick="saveTeamSettings()">SAVE SETTINGS</button>
-                    </div>
-                </div>
-            </div>
-        </div>
     </main>
 
     <script src="script.js"></script>
