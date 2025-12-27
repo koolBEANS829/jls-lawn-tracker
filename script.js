@@ -54,7 +54,8 @@ const CONFIG = {
     },
     storage: {
         jobsKey: 'jls_local_jobs',
-        addressesKey: 'jls_address_history'
+        addressesKey: 'jls_address_history',
+        teamPhonesKey: 'jls_team_phones'
     },
     recurrence: {
         weekly: 7,
@@ -1533,8 +1534,14 @@ function openJobDetails(event) {
 
         const smsRemindBtn = document.getElementById('btn-sms-remind');
         const smsThanksBtn = document.getElementById('btn-sms-thanks');
-        if (smsRemindBtn) smsRemindBtn.href = `sms:${phone}?body=${encodeURIComponent(remindMsg)}`;
-        if (smsThanksBtn) smsThanksBtn.href = `sms:${phone}?body=${encodeURIComponent(thanksMsg)}`;
+        if (smsRemindBtn) {
+            smsRemindBtn.href = buildGroupSmsHref(phone, remindMsg);
+            smsRemindBtn.onclick = checkTeamNumbersConfigured;
+        }
+        if (smsThanksBtn) {
+            smsThanksBtn.href = buildGroupSmsHref(phone, thanksMsg);
+            smsThanksBtn.onclick = checkTeamNumbersConfigured;
+        }
     } else {
         if (phoneRow) phoneRow.classList.add('hidden');
         if (smsActions) smsActions.classList.add('hidden');
@@ -1678,6 +1685,171 @@ function showCalendarError(message) {
 }
 
 // ============================================================
+// Team Settings (Group SMS)
+// ============================================================
+
+/**
+ * Gets the saved team phone numbers from localStorage.
+ * @returns {Object} Object with yourPhone (string) and ccPhones (string, comma-separated)
+ */
+function getTeamPhones() {
+    return Storage.get(CONFIG.storage.teamPhonesKey) || { yourPhone: '', ccPhones: '' };
+}
+
+/**
+ * Saves team phone numbers to localStorage.
+ */
+window.saveTeamSettings = function () {
+    const yourPhoneInput = document.getElementById('settings-your-phone');
+    const ccPhones = document.getElementById('settings-cc-phones')?.value.trim() || '';
+
+    // Get yourPhone from input if visible, otherwise keep existing value
+    let yourPhone;
+    if (yourPhoneInput && !yourPhoneInput.classList.contains('hidden')) {
+        yourPhone = yourPhoneInput.value.trim();
+    } else {
+        // Input is hidden (locked), keep existing value
+        const existing = getTeamPhones();
+        yourPhone = existing.yourPhone || '';
+    }
+
+    Storage.set(CONFIG.storage.teamPhonesKey, { yourPhone, ccPhones });
+
+    closeSettingsModal();
+    showToast('Team settings saved!', 'success');
+};
+
+/**
+ * Opens the settings modal and populates with saved values.
+ * Shows locked state for your phone if already saved.
+ */
+function openSettingsModal() {
+    const teamPhones = getTeamPhones();
+
+    const yourPhoneInput = document.getElementById('settings-your-phone');
+    const yourPhoneLocked = document.getElementById('your-phone-locked');
+    const yourPhoneDisplay = document.getElementById('your-phone-display');
+    const ccPhonesEl = document.getElementById('settings-cc-phones');
+
+    // If your phone is already saved, show locked state
+    if (teamPhones.yourPhone) {
+        if (yourPhoneLocked) yourPhoneLocked.classList.remove('hidden');
+        if (yourPhoneDisplay) yourPhoneDisplay.textContent = teamPhones.yourPhone;
+        if (yourPhoneInput) yourPhoneInput.classList.add('hidden');
+    } else {
+        // Show input for new entry
+        if (yourPhoneLocked) yourPhoneLocked.classList.add('hidden');
+        if (yourPhoneInput) {
+            yourPhoneInput.classList.remove('hidden');
+            yourPhoneInput.value = '';
+        }
+    }
+
+    if (ccPhonesEl) ccPhonesEl.value = teamPhones.ccPhones || '';
+
+    document.getElementById('settings-modal')?.classList.remove('hidden');
+}
+
+/**
+ * Unlocks the "Your Number" field for editing.
+ */
+window.unlockYourPhone = function () {
+    const teamPhones = getTeamPhones();
+    const yourPhoneInput = document.getElementById('settings-your-phone');
+    const yourPhoneLocked = document.getElementById('your-phone-locked');
+
+    if (yourPhoneLocked) yourPhoneLocked.classList.add('hidden');
+    if (yourPhoneInput) {
+        yourPhoneInput.classList.remove('hidden');
+        yourPhoneInput.value = teamPhones.yourPhone || '';
+        yourPhoneInput.focus();
+    }
+};
+
+/**
+ * Closes the settings modal.
+ */
+function closeSettingsModal() {
+    document.getElementById('settings-modal')?.classList.add('hidden');
+}
+
+/**
+ * Injects the settings gear button into the calendar toolbar.
+ * Called after calendar renders.
+ */
+function injectSettingsButton() {
+    // Find the right side of the toolbar (where Month/Week buttons are)
+    const toolbarRight = document.querySelector('.fc-toolbar-chunk:last-child');
+
+    if (toolbarRight && !document.getElementById('settings-gear-btn')) {
+        const gearBtn = document.createElement('button');
+        gearBtn.id = 'settings-gear-btn';
+        gearBtn.className = 'settings-gear-btn';
+        gearBtn.innerHTML = '⚙️';
+        gearBtn.title = 'Team Settings';
+        gearBtn.onclick = openSettingsModal;
+
+        toolbarRight.appendChild(gearBtn);
+    }
+}
+
+/**
+ * Builds an SMS href with all team members CC'd.
+ * @param {string} customerPhone - The customer's phone number
+ * @param {string} messageBody - The message to send
+ * @returns {string} The sms: href string
+ */
+function buildGroupSmsHref(customerPhone, messageBody) {
+    const teamPhones = getTeamPhones();
+    const recipients = [customerPhone];
+
+    // Add your phone if it exists
+    if (teamPhones.yourPhone) {
+        recipients.push(teamPhones.yourPhone);
+    }
+
+    // Parse and add CC phones (comma-separated)
+    if (teamPhones.ccPhones) {
+        const ccList = teamPhones.ccPhones
+            .split(',')
+            .map(p => p.trim())
+            .filter(p => p.length > 0);
+        recipients.push(...ccList);
+    }
+
+    // Join all numbers with commas for group MMS
+    const recipientString = recipients.join(',');
+
+    return `sms:${recipientString}?body=${encodeURIComponent(messageBody)}`;
+}
+
+/**
+ * Checks if team numbers are configured and shows a warning toast if not.
+ * Called when SMS buttons are clicked.
+ * @returns {boolean} Always returns true to allow the link to proceed
+ */
+function checkTeamNumbersConfigured() {
+    const teamPhones = getTeamPhones();
+
+    // Count how many team numbers are configured
+    let teamCount = 0;
+    if (teamPhones.yourPhone) teamCount++;
+    if (teamPhones.ccPhones) {
+        const ccList = teamPhones.ccPhones.split(',').filter(p => p.trim().length > 0);
+        teamCount += ccList.length;
+    }
+
+    if (teamCount === 0) {
+        showToast('⚠️ No team numbers configured! Tap ⚙️ in the calendar to add your team.', 'warning', 5000);
+    } else if (teamCount === 1 && teamPhones.yourPhone && !teamPhones.ccPhones) {
+        showToast('💡 Only your number is set. Add teammates in ⚙️ Settings to CC them.', 'info', 4000);
+    }
+
+    // Always return true to let the SMS link proceed
+    return true;
+}
+
+// ============================================================
 // Application Bootstrap
 // ============================================================
 
@@ -1695,6 +1867,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (calendar) {
         calendar.render();
         console.log('✅ Calendar initialized');
+
+        // Inject settings gear button into calendar toolbar
+        injectSettingsButton();
     }
 
     // Initialize Address Autocomplete
@@ -1704,10 +1879,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     const fab = document.getElementById('fab-add-job');
     const wizardOverlay = document.getElementById('wizard-overlay');
     const detailsOverlay = document.getElementById('job-details-modal');
+    const settingsOverlay = document.getElementById('settings-modal');
 
     fab?.addEventListener('click', openWizard);
     document.getElementById('wizard-close')?.addEventListener('click', closeWizard);
     document.getElementById('view-job-close')?.addEventListener('click', closeJobDetails);
+    document.getElementById('settings-close')?.addEventListener('click', closeSettingsModal);
 
     // Setup validation error clearing on input
     const validatedFields = ['wizard-client', 'wizard-address', 'wizard-price', 'wizard-date', 'wizard-occurrences'];
@@ -1725,6 +1902,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
     detailsOverlay?.addEventListener('click', (e) => {
         if (e.target === detailsOverlay) closeJobDetails();
+    });
+    settingsOverlay?.addEventListener('click', (e) => {
+        if (e.target === settingsOverlay) closeSettingsModal();
     });
 });
 
