@@ -3,7 +3,11 @@
 # Local Netlify folder
 .netlify
 
+# Environment variables (NEVER COMMIT!)
+.env
+
 # Google Service Account credentials (NEVER COMMIT!)
 *.json
 !package.json
 !package-lock.json
+
