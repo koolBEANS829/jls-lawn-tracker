@@ -725,6 +725,16 @@ window.saveJob = async function () {
                 // Bulk update all jobs in the series
                 const count = await updateAllInSeries(currentRecurringId, jobsToCreate[0]);
                 await showModal(`Updated ${count} job(s) in the series!`, 'success');
+            } else if (formData.isRecurring && !currentRecurringId && jobsToCreate.length > 1) {
+                // Converting a single job to a recurring series
+                // Update the original job first
+                await updateJob(currentEventId, jobsToCreate[0]);
+                // Create the additional future jobs (skip the first one, it's the original)
+                const futureJobs = jobsToCreate.slice(1);
+                if (futureJobs.length > 0) {
+                    await createJobs(futureJobs);
+                }
+                await showModal(`Job updated and ${futureJobs.length} future job(s) created!`, 'success');
             } else {
                 // Single job update
                 await updateJob(currentEventId, jobsToCreate[0]);
@@ -1473,11 +1483,11 @@ async function openEditWizard(event) {
             // Editing a recurring job - hide the checkbox entirely
             if (recurringContainer) recurringContainer.classList.add('hidden');
         } else {
-            // Editing a non-recurring job - show but disable
+            // Editing a non-recurring job - allow converting to recurring
             if (recurringContainer) recurringContainer.classList.remove('hidden');
             if (recurringCheckbox) {
                 recurringCheckbox.checked = false;
-                recurringCheckbox.disabled = true;
+                recurringCheckbox.disabled = false; // Allow enabling recurring
             }
         }
 
