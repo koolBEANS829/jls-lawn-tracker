@@ -120,8 +120,22 @@ async function calendarRequest(endpoint, options = {}) {
 }
 
 function jobToCalendarEvent(job) {
-    const startDate = new Date(job.start_time);
-    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+    // job.start_time comes as a local datetime string like "2026-01-08T10:00"
+    // We need to treat it as America/New_York time
+    const startTimeStr = job.start_time;
+
+    // Parse the datetime and add 1 hour for end time
+    const [datePart, timePart] = startTimeStr.split('T');
+    const [hours, minutes] = timePart.split(':').map(Number);
+
+    // Calculate end time (1 hour later)
+    let endHours = hours + 1;
+    if (endHours >= 24) {
+        endHours = endHours - 24;
+    }
+    const endTimeStr = `${datePart}T${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+    const startTimeFormatted = `${startTimeStr}:00`;
+
     const title = job.title || 'Lawn Job';
 
     let description = `JLS Lawn Maintenance Job\n\n`;
@@ -134,8 +148,8 @@ function jobToCalendarEvent(job) {
         summary: title,
         description: description,
         location: job.address || '',
-        start: { dateTime: startDate.toISOString(), timeZone: 'America/New_York' },
-        end: { dateTime: endDate.toISOString(), timeZone: 'America/New_York' },
+        start: { dateTime: startTimeFormatted, timeZone: 'America/New_York' },
+        end: { dateTime: endTimeStr, timeZone: 'America/New_York' },
         colorId: job.job_type === 'mowing' ? '10' : '6'
     };
 }
