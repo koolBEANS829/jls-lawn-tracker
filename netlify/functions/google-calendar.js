@@ -43,7 +43,12 @@ async function createJWT() {
     sign.update(unsignedToken);
 
     // Clean up the private key (handle escaped newlines from env var)
-    const privateKey = SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n');
+    // Handle multiple formats: literal \n, escaped \\n, or already real newlines
+    let privateKey = SERVICE_ACCOUNT_PRIVATE_KEY;
+    // Replace literal backslash-n with actual newlines
+    privateKey = privateKey.replace(/\\n/g, '\n');
+    // Also handle double-escaped
+    privateKey = privateKey.replace(/\\\\n/g, '\n');
     const signature = sign.sign(privateKey, 'base64url');
 
     return `${unsignedToken}.${signature}`;
