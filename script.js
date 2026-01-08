@@ -766,7 +766,7 @@ function safeRefetchCalendar() {
 
 /**
  * Creates new jobs in database or local storage.
- * Also syncs each job to Google Calendar for family visibility.
+ * Google Calendar sync is now handled server-side.
  */
 async function createJobs(jobs) {
     if (apiAvailable) {
@@ -779,14 +779,7 @@ async function createJobs(jobs) {
             const error = await response.json();
             throw new Error(error.error || 'Failed to create jobs');
         }
-
-        // Sync to Google Calendar (runs in background, non-blocking)
-        // This sends jobs to family's Skylight calendar
-        for (const job of jobs) {
-            syncJobToCalendar(job).catch(err => {
-                console.warn('Calendar sync skipped:', err.message);
-            });
-        }
+        // Google Calendar sync is now handled automatically by the server
     } else {
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];
         jobs.forEach((job, idx) => {
