@@ -50,7 +50,8 @@ function formatLocalDateTime(date) {
 
 const CONFIG = {
     api: {
-        baseUrl: '/api/jobs'  // Netlify Function handles Supabase calls
+        baseUrl: '/api/jobs',  // Netlify Function handles Supabase calls
+        calendarUrl: '/api/calendar'  // Google Calendar sync endpoint
     },
     storage: {
         jobsKey: 'jls_local_jobs',
@@ -62,6 +63,85 @@ const CONFIG = {
         monthly: 30
     }
 };
+
+// ============================================================
+// Google Calendar Sync
+// ============================================================
+
+/**
+ * Syncs a job to Google Calendar (creates an event).
+ * Runs silently in background - won't block job creation.
+ * @param {Object} job - The job data to sync
+ * @returns {Promise<string|null>} Google Event ID if successful
+ */
+async function syncJobToCalendar(job) {
+    try {
+        const response = await fetch(`${CONFIG.api.calendarUrl}/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(job)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('📅 Synced to Google Calendar:', result.googleEventId);
+            return result.googleEventId;
+        } else {
+            console.warn('⚠️ Calendar sync failed (non-blocking):', await response.text());
+            return null;
+        }
+    } catch (error) {
+        console.warn('⚠️ Calendar sync error (non-blocking):', error.message);
+        return null;
+    }
+}
+
+/**
+ * Updates a Google Calendar event for a job.
+ * @param {string} googleEventId - The Google Calendar event ID
+ * @param {Object} job - Updated job data
+ */
+async function updateCalendarEvent(googleEventId, job) {
+    if (!googleEventId) return;
+
+    try {
+        const response = await fetch(`${CONFIG.api.calendarUrl}/update/${googleEventId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(job)
+        });
+
+        if (response.ok) {
+            console.log('📅 Updated Google Calendar event:', googleEventId);
+        } else {
+            console.warn('⚠️ Calendar update failed:', await response.text());
+        }
+    } catch (error) {
+        console.warn('⚠️ Calendar update error:', error.message);
+    }
+}
+
+/**
+ * Deletes a Google Calendar event.
+ * @param {string} googleEventId - The Google Calendar event ID to delete
+ */
+async function deleteCalendarEvent(googleEventId) {
+    if (!googleEventId) return;
+
+    try {
+        const response = await fetch(`${CONFIG.api.calendarUrl}/delete/${googleEventId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            console.log('📅 Deleted Google Calendar event:', googleEventId);
+        } else {
+            console.warn('⚠️ Calendar delete failed:', await response.text());
+        }
+    } catch (error) {
+        console.warn('⚠️ Calendar delete error:', error.message);
+    }
+}
 
 // ============================================================
 // Message Templates (from LAWN CARE RESPONSES.rtf)
@@ -686,6 +766,7 @@ function safeRefetchCalendar() {
 
 /**
  * Creates new jobs in database or local storage.
+ * Also syncs each job to Google Calendar for family visibility.
  */
 async function createJobs(jobs) {
     if (apiAvailable) {
@@ -697,6 +778,14 @@ async function createJobs(jobs) {
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.error || 'Failed to create jobs');
+        }
+
+        // Sync to Google Calendar (runs in background, non-blocking)
+        // This sends jobs to family's Skylight calendar
+        for (const job of jobs) {
+            syncJobToCalendar(job).catch(err => {
+                console.warn('Calendar sync skipped:', err.message);
+            });
         }
     } else {
         const existing = Storage.get(CONFIG.storage.jobsKey) || [];

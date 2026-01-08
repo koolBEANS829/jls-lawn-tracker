@@ -14,3 +14,13 @@
   from = "/api/jobs"
   to = "/.netlify/functions/jobs"
   status = 200
+
+[[redirects]]
+  from = "/api/calendar/*"
+  to = "/.netlify/functions/google-calendar/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/calendar"
+  to = "/.netlify/functions/google-calendar"
+  status = 200

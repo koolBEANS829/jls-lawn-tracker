@@ -2,3 +2,8 @@
 
 # Local Netlify folder
 .netlify
+
+# Google Service Account credentials (NEVER COMMIT!)
+*.json
+!package.json
+!package-lock.json
