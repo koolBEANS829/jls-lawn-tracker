@@ -122,8 +122,8 @@ async function calendarRequest(endpoint, options = {}) {
 function jobToCalendarEvent(job) {
     const startDate = new Date(job.start_time);
     const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-    const jobTypeEmoji = job.job_type === 'mowing' ? '🌿' : '🌳';
-    const title = `${jobTypeEmoji} ${job.title || 'Lawn Job'}`;
+    const jobTypeLabel = job.job_type === 'mowing' ? 'Mow' : 'Hedge';
+    const title = `${job.title || 'Lawn Job'} (${jobTypeLabel})`;
 
     let description = `JLS Lawn Maintenance Job\n\n`;
     if (job.job_type) description += `Type: ${job.job_type}\n`;
