@@ -254,6 +254,24 @@ function hideMessageOptions() {
 }
 
 /**
+ * Shows a simple toast notification at the bottom of the screen
+ */
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast ${type}`;
+
+    // Trigger animation
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    // Auto-hide after 2 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.classList.add('hidden'), 300);
+    }, 2000);
+}
+
+/**
  * Copies the current message (remind or thanks) to clipboard
  */
 async function copyCurrentMessage() {
@@ -269,10 +287,10 @@ async function copyCurrentMessage() {
     try {
         await navigator.clipboard.writeText(msg);
         hideMessageOptions();
-        await showModal('Message copied!', 'success');
+        showToast('✓ Message copied!', 'success');
     } catch (err) {
         console.error('Copy failed:', err);
-        await showModal('Failed to copy message', 'error');
+        showToast('Failed to copy', 'error');
     }
 }
 
