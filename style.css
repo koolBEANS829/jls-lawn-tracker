@@ -369,10 +369,7 @@ main {
 }
 
 .fc-list-event-dot {
-    border-radius: var(--radius-full) !important;
-    width: 12px !important;
-    height: 12px !important;
-    box-shadow: var(--shadow-sm);
+    display: none !important;
 }
 
 .fc-list-event-time {
