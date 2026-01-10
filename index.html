@@ -177,12 +177,21 @@
                     <div class="detail-row" id="view-job-phone-row"><strong>Phone:</strong> <span
                             id="view-job-phone">...</span></div>
                     <div class="sms-actions">
-                        <a id="btn-sms-remind" href="#" class="btn-sms remind">📲 Remind</a>
-                        <button id="btn-copy-remind" type="button" class="btn-sms copy" onclick="copyRemindMessage()">📋
-                            Copy</button>
-                        <a id="btn-sms-thanks" href="#" class="btn-sms thanks">⭐ Thank You</a>
-                        <button id="btn-copy-thanks" type="button" class="btn-sms copy" onclick="copyThanksMessage()">📋
-                            Copy</button>
+                        <button id="btn-remind-options" type="button" class="btn-sms remind"
+                            onclick="showMessageOptions('remind')">📲 Remind</button>
+                        <button id="btn-thanks-options" type="button" class="btn-sms thanks"
+                            onclick="showMessageOptions('thanks')">⭐ Thank You</button>
+                    </div>
+                    <div id="message-options-card" class="message-options-card hidden">
+                        <div class="message-options-header">
+                            <span id="message-options-title">Send Message</span>
+                            <span class="message-options-close" onclick="hideMessageOptions()">&times;</span>
+                        </div>
+                        <div class="message-options-buttons">
+                            <a id="btn-sms-send" href="#" class="btn-message-option send">📲 Send via SMS</a>
+                            <button id="btn-copy-message" type="button" class="btn-message-option copy"
+                                onclick="copyCurrentMessage()">📋 Copy to Clipboard</button>
+                        </div>
                     </div>
                     <div class="detail-row"><strong>Notes:</strong>
                         <p id="view-job-notes" class="notes-box">No notes.</p>

@@ -951,6 +951,97 @@ main {
     background: var(--neutral-600);
 }
 
+/* Message Options Sub-Card */
+.message-options-card {
+    margin-top: var(--space-3);
+    background: var(--neutral-50);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message-options-card.hidden {
+    display: none;
+}
+
+.message-options-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    background: var(--primary-100);
+    border-bottom: 1px solid var(--neutral-200);
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--primary-800);
+}
+
+.message-options-close {
+    cursor: pointer;
+    font-size: 1.25rem;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.message-options-close:hover {
+    opacity: 1;
+}
+
+.message-options-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+}
+
+.btn-message-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-message-option.send {
+    background: var(--primary-600);
+    color: white;
+    border: none;
+}
+
+.btn-message-option.send:hover {
+    background: var(--primary-500);
+}
+
+.btn-message-option.copy {
+    background: white;
+    color: var(--neutral-700);
+    border: 2px solid var(--neutral-300);
+}
+
+.btn-message-option.copy:hover {
+    background: var(--neutral-100);
+    border-color: var(--neutral-400);
+}
+
 .scope-card {
     max-width: 380px;
 }

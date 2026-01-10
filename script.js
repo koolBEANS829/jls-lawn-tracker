@@ -209,28 +209,58 @@ https://www.facebook.com/share/16iCjk4xax/`;
 }
 
 /**
- * Copies the reminder message to clipboard.
+ * Tracks the current message type for the sub-card (remind or thanks)
  */
-async function copyRemindMessage() {
-    if (!currentEvent) return;
-    const msg = generateReminderMessage(currentEvent);
-    try {
-        await navigator.clipboard.writeText(msg);
-        await showModal('Reminder message copied!', 'success');
-    } catch (err) {
-        console.error('Copy failed:', err);
-        await showModal('Failed to copy message', 'error');
+let currentMessageType = null;
+
+/**
+ * Shows the message options sub-card
+ */
+function showMessageOptions(type) {
+    currentMessageType = type;
+    const card = document.getElementById('message-options-card');
+    const title = document.getElementById('message-options-title');
+    const smsBtn = document.getElementById('btn-sms-send');
+
+    if (type === 'remind') {
+        title.textContent = '📲 Reminder';
+        const msg = generateReminderMessage(currentEvent);
+        const phone = currentEvent?.extendedProps?.phone || '';
+        smsBtn.href = `sms:${phone}?body=${encodeURIComponent(msg)}`;
+    } else {
+        title.textContent = '⭐ Thank You';
+        const msg = generateFollowUpMessage();
+        const phone = currentEvent?.extendedProps?.phone || '';
+        smsBtn.href = `sms:${phone}?body=${encodeURIComponent(msg)}`;
     }
+
+    card.classList.remove('hidden');
 }
 
 /**
- * Copies the thank you message to clipboard.
+ * Hides the message options sub-card
  */
-async function copyThanksMessage() {
-    const msg = generateFollowUpMessage();
+function hideMessageOptions() {
+    const card = document.getElementById('message-options-card');
+    card.classList.add('hidden');
+    currentMessageType = null;
+}
+
+/**
+ * Copies the current message (remind or thanks) to clipboard
+ */
+async function copyCurrentMessage() {
+    let msg;
+    if (currentMessageType === 'remind') {
+        msg = generateReminderMessage(currentEvent);
+    } else {
+        msg = generateFollowUpMessage();
+    }
+
     try {
         await navigator.clipboard.writeText(msg);
-        await showModal('Thank you message copied!', 'success');
+        hideMessageOptions();
+        await showModal('Message copied!', 'success');
     } catch (err) {
         console.error('Copy failed:', err);
         await showModal('Failed to copy message', 'error');
