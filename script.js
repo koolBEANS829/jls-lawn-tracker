@@ -209,6 +209,35 @@ https://www.facebook.com/share/16iCjk4xax/`;
 }
 
 /**
+ * Copies the reminder message to clipboard.
+ */
+async function copyRemindMessage() {
+    if (!currentEvent) return;
+    const msg = generateReminderMessage(currentEvent);
+    try {
+        await navigator.clipboard.writeText(msg);
+        await showModal('Reminder message copied!', 'success');
+    } catch (err) {
+        console.error('Copy failed:', err);
+        await showModal('Failed to copy message', 'error');
+    }
+}
+
+/**
+ * Copies the thank you message to clipboard.
+ */
+async function copyThanksMessage() {
+    const msg = generateFollowUpMessage();
+    try {
+        await navigator.clipboard.writeText(msg);
+        await showModal('Thank you message copied!', 'success');
+    } catch (err) {
+        console.error('Copy failed:', err);
+        await showModal('Failed to copy message', 'error');
+    }
+}
+
+/**
  * Generates initial inquiry response template.
  * Template for when someone first reaches out.
  */

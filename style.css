@@ -940,6 +940,17 @@ main {
     background: #d97706;
 }
 
+.btn-sms.copy {
+    background: var(--neutral-500);
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-sms.copy:hover {
+    background: var(--neutral-600);
+}
+
 .scope-card {
     max-width: 380px;
 }
