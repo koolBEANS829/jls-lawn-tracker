@@ -463,7 +463,7 @@ function renderEventContent(arg) {
         return { domNodes: [] };
     }
 
-    const { price, address } = arg.event.extendedProps;
+    const { price, address, is_recurring } = arg.event.extendedProps;
 
     const container = document.createElement('div');
     container.className = 'event-content';
@@ -496,6 +496,14 @@ function renderEventContent(arg) {
         }
 
         container.appendChild(detailsEl);
+    }
+
+    // Recurring indicator at the bottom
+    if (is_recurring) {
+        const recurringEl = document.createElement('div');
+        recurringEl.className = 'event-recurring-badge';
+        recurringEl.textContent = '🔁';
+        container.appendChild(recurringEl);
     }
 
     return { domNodes: [container] };
