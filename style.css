@@ -296,12 +296,6 @@ main {
     text-overflow: ellipsis;
 }
 
-.event-recurring-badge {
-    font-size: 0.65rem;
-    opacity: 0.8;
-    margin-top: 2px;
-}
-
 .job-mowing,
 .fc-event.job-mowing {
     background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-500) 100%) !important;

@@ -468,10 +468,10 @@ function renderEventContent(arg) {
     const container = document.createElement('div');
     container.className = 'event-content';
 
-    // Event Title
+    // Event Title with recurring emoji at end
     const titleEl = document.createElement('div');
     titleEl.className = 'event-title';
-    titleEl.textContent = arg.event.title;
+    titleEl.textContent = arg.event.title + (is_recurring ? ' 🔁' : '');
     container.appendChild(titleEl);
 
     // Event Details (Price & Address)
@@ -496,14 +496,6 @@ function renderEventContent(arg) {
         }
 
         container.appendChild(detailsEl);
-    }
-
-    // Recurring indicator at the bottom
-    if (is_recurring) {
-        const recurringEl = document.createElement('div');
-        recurringEl.className = 'event-recurring-badge';
-        recurringEl.textContent = '🔁';
-        container.appendChild(recurringEl);
     }
 
     return { domNodes: [container] };
