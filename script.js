@@ -222,15 +222,22 @@ function showMessageOptions(type) {
     const title = document.getElementById('message-options-title');
     const smsBtn = document.getElementById('btn-sms-send');
 
+    // Get the current event from the calendar
+    const event = calendar?.getEventById(currentEventId);
+    if (!event) {
+        console.error('No event found for ID:', currentEventId);
+        return;
+    }
+
+    const phone = event.extendedProps?.phone || '';
+
     if (type === 'remind') {
         title.textContent = '📲 Reminder';
-        const msg = generateReminderMessage(currentEvent);
-        const phone = currentEvent?.extendedProps?.phone || '';
+        const msg = generateReminderMessage(event);
         smsBtn.href = `sms:${phone}?body=${encodeURIComponent(msg)}`;
     } else {
         title.textContent = '⭐ Thank You';
         const msg = generateFollowUpMessage();
-        const phone = currentEvent?.extendedProps?.phone || '';
         smsBtn.href = `sms:${phone}?body=${encodeURIComponent(msg)}`;
     }
 
@@ -250,9 +257,11 @@ function hideMessageOptions() {
  * Copies the current message (remind or thanks) to clipboard
  */
 async function copyCurrentMessage() {
+    const event = calendar?.getEventById(currentEventId);
     let msg;
+
     if (currentMessageType === 'remind') {
-        msg = generateReminderMessage(currentEvent);
+        msg = generateReminderMessage(event);
     } else {
         msg = generateFollowUpMessage();
     }
