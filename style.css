@@ -1189,6 +1189,37 @@ main {
         padding: var(--space-2) var(--space-4) !important;
     }
 
+    /* Calendar events - less squished on mobile */
+    .fc-event {
+        padding: var(--space-2) var(--space-2) !important;
+        margin: 2px 1px !important;
+        font-size: var(--font-size-sm) !important;
+        min-height: 28px !important;
+    }
+
+    .fc-daygrid-event {
+        white-space: normal !important;
+        line-height: 1.3 !important;
+    }
+
+    .fc-daygrid-day-events {
+        min-height: auto !important;
+    }
+
+    .fc-daygrid-event-harness {
+        margin-bottom: 2px !important;
+    }
+
+    .event-title {
+        font-size: var(--font-size-sm) !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+    }
+
+    .event-details-row {
+        font-size: 0.75rem !important;
+    }
+
     .fc-list-day-cushion {
         padding: var(--space-3) var(--space-3) !important;
     }
