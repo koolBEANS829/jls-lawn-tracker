@@ -322,11 +322,7 @@ main {
     text-decoration: line-through;
 }
 
-.job-recurring::before {
-    content: "🔁";
-    margin-right: var(--space-1);
-    font-size: 0.65rem;
-}
+/* Recurring indicator is now added at the end of title via JavaScript */
 
 .job-empty-day {
     display: none !important;
