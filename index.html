@@ -18,13 +18,22 @@
     <!-- FullCalendar -->
     <script src="fullcalendar.min.js"></script>
 
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <!-- Styles -->
     <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 
 <body>
     <header class="app-header">
-        <h1>JLS Maintenance Job Tracker</h1>
+        <div class="header-content">
+            <h1>JLS Maintenance Job Tracker</h1>
+            <button id="btn-quotes" class="btn-quotes" aria-label="View Quote Requests" onclick="showQuoteModal()">
+                🔔
+                <span id="quote-badge" class="quote-badge hidden">0</span>
+            </button>
+        </div>
     </header>
 
     <main>
@@ -48,6 +57,10 @@
                         <input type="tel" id="wizard-phone" placeholder="e.g. 555-123-4567" inputmode="tel">
                     </div>
                     <div class="form-group-large">
+                        <label for="wizard-email">Email (Optional)</label>
+                        <input type="email" id="wizard-email" placeholder="e.g. client@example.com">
+                    </div>
+                    <div class="form-group-large">
                         <label for="wizard-address">Address</label>
                         <div class="autocomplete-wrapper">
                             <input type="text" id="wizard-address" placeholder="e.g. 123 Main St" autocomplete="off">
@@ -61,9 +74,11 @@
                                 MOWING</button>
                             <button type="button" class="btn-big-type hedge" onclick="selectJobType('hedge')">✂️
                                 HEDGE</button>
+                            <button type="button" class="btn-big-type quote" onclick="selectJobType('quote')">📝
+                                QUOTE</button>
                         </div>
                     </div>
-                    <div class="form-group-large">
+                    <div id="price-container" class="form-group-large">
                         <label for="wizard-price">Price ($)</label>
                         <input type="number" id="wizard-price" placeholder="e.g. 50" inputmode="decimal">
                     </div>
@@ -220,6 +235,24 @@
                 <div class="custom-modal-actions" id="custom-modal-actions">
                     <button type="button" class="btn-modal-cancel hidden" id="custom-modal-cancel">Cancel</button>
                     <button type="button" class="btn-modal-confirm" id="custom-modal-confirm">OK</button>
+                </div>
+            </div>
+        </div>
+        <!-- Quote Requests Modal -->
+        <div id="quote-modal" class="wizard-overlay hidden">
+            <div class="wizard-card quote-modal-card">
+                <div class="wizard-header">
+                    <h2>Quote Requests</h2>
+                    <span id="quote-modal-close" class="close-btn" onclick="hideQuoteModal()">&times;</span>
+                </div>
+                <div class="quote-list-container">
+                    <div id="quote-list" class="quote-list">
+                        <!-- Quote cards will be injected here -->
+                        <div class="empty-state">
+                            <span class="empty-icon">📭</span>
+                            <p>No new quote requests.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

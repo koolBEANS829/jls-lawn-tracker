@@ -308,6 +308,12 @@ main {
     color: white !important;
 }
 
+.job-quote,
+.fc-event.job-quote {
+    background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%) !important;
+    color: white !important;
+}
+
 .job-completed,
 .fc-event.job-completed {
     background: linear-gradient(135deg, var(--neutral-500) 0%, var(--neutral-400) 100%) !important;
@@ -645,6 +651,19 @@ main {
     background: linear-gradient(135deg, #cffafe 0%, #ecfeff 100%);
     color: #0891b2;
     box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.15);
+}
+
+.btn-big-type.quote {
+    grid-column: span 2;
+    margin-top: 0;
+    /* No need for margin-top as grid handles gap */
+}
+
+.btn-big-type.quote.selected {
+    border-color: #f59e0b;
+    background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%);
+    color: #d97706;
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.15);
 }
 
 .checkbox-label {
@@ -1401,4 +1420,255 @@ main {
 
 .toast.error {
     background: var(--error);
+}
+
+/* ============================================================ */
+/* Quote Notifications & Modal                                  */
+/* ============================================================ */
+
+/* Header Layout */
+.app-header .header-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.btn-quotes {
+    position: absolute;
+    right: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: var(--radius-full);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-quotes:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+.quote-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--error);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    border: 2px solid var(--primary-800);
+    animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.quote-badge.hidden {
+    display: none;
+}
+
+@keyframes bounceIn {
+    0% {
+        transform: scale(0);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Quote Modal & List */
+.quote-modal-card {
+    max-width: 600px;
+    /* Wider than normal wizard */
+    height: 90vh;
+    /* Taller */
+    max-height: 800px;
+    display: flex;
+    flex-direction: column;
+}
+
+.quote-list-container {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--neutral-50);
+    padding: var(--space-4);
+}
+
+.quote-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+/* Quote Card */
+.quote-card-item {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-4);
+    border: 1px solid var(--neutral-200);
+    transition: all var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+}
+
+.quote-card-item.new {
+    border-left: 4px solid var(--primary-500);
+}
+
+.quote-card-item.new::after {
+    content: 'NEW';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--primary-100);
+    color: var(--primary-700);
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+}
+
+.quote-card-item.converted {
+    border-left: 4px solid var(--neutral-400);
+    opacity: 0.75;
+    background: var(--neutral-50);
+}
+
+.quote-card-item.converted .quote-name {
+    text-decoration: line-through;
+    color: var(--neutral-500);
+}
+
+.quote-header {
+    margin-bottom: var(--space-3);
+}
+
+.quote-name {
+    font-weight: 700;
+    font-size: var(--font-size-lg);
+    color: var(--neutral-800);
+}
+
+.quote-service-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    margin-top: var(--space-1);
+    text-transform: uppercase;
+    background: var(--neutral-100);
+    color: var(--neutral-600);
+}
+
+.quote-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    font-size: var(--font-size-sm);
+    color: var(--neutral-600);
+    margin-bottom: var(--space-4);
+}
+
+.quote-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+}
+
+.quote-icon {
+    min-width: 20px;
+    text-align: center;
+}
+
+.quote-message {
+    background: var(--neutral-50);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    font-style: italic;
+    margin-bottom: var(--space-4);
+    border-left: 3px solid var(--neutral-300);
+}
+
+.quote-actions {
+    display: flex;
+    gap: var(--space-3);
+}
+
+.btn-convert {
+    flex: 2;
+    background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
+    color: white;
+    border: none;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-dismiss {
+    flex: 1;
+    background: white;
+    border: 1px solid var(--neutral-300);
+    color: var(--neutral-600);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-contact {
+    flex: 1.5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: #e0e7ff;
+    color: #4338ca;
+    border: 1px solid #c7d2fe;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all var(--transition-fast);
+}
+
+.btn-contact:hover {
+    background: #c7d2fe;
+    color: #3730a3;
+    transform: translateY(-1px);
+}
+
+.empty-state {
+    text-align: center;
+    padding: var(--space-10) var(--space-4);
+    color: var(--neutral-500);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: var(--space-3);
+    opacity: 0.5;
 }

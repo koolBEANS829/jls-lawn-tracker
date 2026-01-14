@@ -51,7 +51,9 @@ function formatLocalDateTime(date) {
 const CONFIG = {
     api: {
         baseUrl: '/api/jobs',  // Netlify Function handles Supabase calls
-        calendarUrl: '/api/calendar'  // Google Calendar sync endpoint
+        calendarUrl: '/api/calendar',  // Google Calendar sync endpoint
+        supabaseUrl: 'https://naxhczwlfymynqiescmn.supabase.co',
+        supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5heGhjendsZnlteW5xaWVzY21uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNzI3NDgsImV4cCI6MjA4Mjk0ODc0OH0.AG-OeNODU87hhw124x1gryh0CB8dP4SjDyUIIM35HRw'
     },
     storage: {
         jobsKey: 'jls_local_jobs',
@@ -317,6 +319,8 @@ let currentRecurringId = null;
 let isEditMode = false;
 let selectedJobType = '';
 let editScope = 'single'; // 'single' or 'all' - for bulk editing recurring jobs
+let dbClient = null; // Direct Supabase client
+let pendingQuotes = []; // Store fetched quotes
 
 // ============================================================
 // Custom Modal Utilities
@@ -506,6 +510,7 @@ function getEventClasses(type, status, isRecurring) {
 
     if (type === 'mowing') classes.push('job-mowing');
     else if (type === 'hedge') classes.push('job-hedge');
+    else if (type === 'quote') classes.push('job-quote');
 
     if (status === 'done') classes.push('job-completed');
     if (status === 'cancelled') classes.push('job-cancelled');
@@ -528,6 +533,7 @@ function mapJobToEvent(job) {
         price: job.price,
         address: job.address,
         phone: job.client_phone,
+        email: job.client_email,
         recurring_id: job.recurring_id,
         is_recurring: job.is_recurring,
         recurrence_pattern: job.recurrence_pattern,
@@ -549,15 +555,21 @@ function renderEventContent(arg) {
         return { domNodes: [] };
     }
 
-    const { price, address, is_recurring } = arg.event.extendedProps;
+    const { price, address, is_recurring, job_type } = arg.event.extendedProps;
 
     const container = document.createElement('div');
     container.className = 'event-content';
 
+    // Determine function icon
+    let icon = '';
+    if (job_type === 'mowing') icon = '🌱 ';
+    else if (job_type === 'hedge') icon = '✂️ ';
+    else if (job_type === 'quote') icon = '📝 ';
+
     // Event Title with recurring emoji at end
     const titleEl = document.createElement('div');
     titleEl.className = 'event-title';
-    titleEl.textContent = arg.event.title + (is_recurring ? ' 🔁' : '');
+    titleEl.textContent = icon + arg.event.title + (is_recurring ? ' 🔁' : '');
     container.appendChild(titleEl);
 
     // Event Details (Price & Address)
@@ -701,6 +713,7 @@ window.saveJob = async function () {
     const formData = {
         client: document.getElementById('wizard-client').value.trim(),
         phone: document.getElementById('wizard-phone').value.trim(),
+        email: document.getElementById('wizard-email').value.trim(),
         address: document.getElementById('wizard-address').value.trim(),
         price: document.getElementById('wizard-price').value,
         date: document.getElementById('wizard-date').value,
@@ -739,7 +752,7 @@ window.saveJob = async function () {
         hasErrors = true;
     }
 
-    if (!formData.price) {
+    if (selectedJobType !== 'quote' && !formData.price) {
         markFieldAsError('wizard-price');
         errors.push('Price is required');
         hasErrors = true;
@@ -767,7 +780,8 @@ window.saveJob = async function () {
     }
 
     // Build title
-    const typeLabel = selectedJobType === 'mowing' ? 'Mowing' : 'Hedge Trimming';
+    const typeLabels = { mowing: 'Mowing', hedge: 'Hedge Trimming', quote: 'Quote' };
+    const typeLabel = typeLabels[selectedJobType] || 'Job';
     let eventTitle = formData.client;
     if (!eventTitle.toLowerCase().includes(typeLabel.toLowerCase())) {
         eventTitle += ` - ${typeLabel}`;
@@ -791,6 +805,7 @@ window.saveJob = async function () {
             price: formData.price || null,
             address: formData.address,
             client_phone: formData.phone,
+            client_email: formData.email,
             status: isEditMode && i === 0 ? undefined : 'pending',
             recurring_id: recurringId,
             is_recurring: formData.isRecurring,
@@ -1444,6 +1459,18 @@ window.selectJobType = function (type) {
         jobTypeSelection.classList.remove('has-error');
         jobTypeSelection.closest('.form-group-large')?.classList.remove('has-error');
     }
+
+    // Toggle Price Field & Recurring Options Visibility
+    const priceContainer = document.getElementById('price-container');
+    const recurringContainer = document.getElementById('recurring-checkbox-container');
+
+    if (type === 'quote') {
+        if (priceContainer) priceContainer.classList.add('hidden');
+        if (recurringContainer) recurringContainer.classList.add('hidden');
+    } else {
+        if (priceContainer) priceContainer.classList.remove('hidden');
+        if (recurringContainer) recurringContainer.classList.remove('hidden');
+    }
 };
 
 window.toggleRecurringOptions = function () {
@@ -1524,6 +1551,9 @@ async function openEditWizard(event) {
         const phoneEl = document.getElementById('wizard-phone');
         if (phoneEl) phoneEl.value = event.extendedProps?.phone || '';
 
+        const emailEl = document.getElementById('wizard-email');
+        if (emailEl) emailEl.value = event.extendedProps?.email || '';
+
         const addressEl = document.getElementById('wizard-address');
         if (addressEl) addressEl.value = event.extendedProps?.address || '';
 
@@ -1556,8 +1586,8 @@ async function openEditWizard(event) {
         if (notesEl) notesEl.value = event.extendedProps?.notes || '';
 
         selectedJobType = event.extendedProps?.type || 'mowing';
-        document.querySelectorAll('.btn-big-type').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`.btn-big-type.${selectedJobType}`)?.classList.add('selected');
+        // Use the centralized function to ensure UI consistency (hiding price/recurring for quotes)
+        selectJobType(selectedJobType);
 
         // Hide recurring checkbox for recurring job edits (they already selected scope)
         // Show but disable for non-recurring edits
@@ -1569,8 +1599,13 @@ async function openEditWizard(event) {
             // Editing a recurring job - hide the checkbox entirely
             if (recurringContainer) recurringContainer.classList.add('hidden');
         } else {
-            // Editing a non-recurring job - allow converting to recurring
-            if (recurringContainer) recurringContainer.classList.remove('hidden');
+            // Editing a non-recurring job - allow converting to recurring ONLY if not a Quote
+            if (selectedJobType === 'quote') {
+                if (recurringContainer) recurringContainer.classList.add('hidden');
+            } else {
+                if (recurringContainer) recurringContainer.classList.remove('hidden');
+            }
+
             if (recurringCheckbox) {
                 recurringCheckbox.checked = false;
                 recurringCheckbox.disabled = false; // Allow enabling recurring
@@ -1605,8 +1640,13 @@ async function openWizard() {
     document.getElementById('wizard-title').textContent = 'New Job';
     document.getElementById('wizard-client').value = '';
     document.getElementById('wizard-phone').value = '';
+    document.getElementById('wizard-email').value = '';
     document.getElementById('wizard-address').value = '';
     document.getElementById('wizard-price').value = '';
+
+    // Reset price container visibility
+    const priceContainer = document.getElementById('price-container');
+    if (priceContainer) priceContainer.classList.remove('hidden');
 
     const dateEl = document.getElementById('wizard-date');
     if (dateEl) {
@@ -1856,8 +1896,257 @@ function showCalendarError(message) {
 }
 
 // ============================================================
-// Application Bootstrap
+// Quote Request System
 // ============================================================
+
+/**
+ * Initialize the Quotes System (Supabase Client & Subscription)
+ */
+async function initializeQuotesSystem() {
+    if (typeof supabase === 'undefined') {
+        console.warn('Supabase SDK not loaded. Quotes system disabled.');
+        return;
+    }
+
+    try {
+        // Initialize Supabase Client
+        dbClient = supabase.createClient(CONFIG.api.supabaseUrl, CONFIG.api.supabaseKey);
+        console.log('✅ Supabase Client Initialized');
+
+        // Initial Fetch
+        await fetchQuotes();
+
+        // Setup Realtime Subscription
+        dbClient
+            .channel('quote_requests_channel')
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'quote_requests' },
+                (payload) => {
+                    console.log('🔔 New Quote Received!', payload.new);
+                    fetchQuotes(); // Refresh list
+                    showToast('🔔 New Quote Request!', 'info');
+
+                    // Simple sound effect (optional)
+                    // new Audio('notification.mp3').play().catch(() => {});
+                }
+            )
+            .subscribe();
+
+    } catch (error) {
+        console.error('Error initializing quotes system:', error);
+    }
+}
+
+/**
+ * Fetch pending quote requests from Supabase
+ */
+async function fetchQuotes() {
+    if (!dbClient) return;
+
+    try {
+        const { data, error } = await dbClient
+            .from('quote_requests')
+            .select('*')
+            .in('status', ['new', 'contacted', 'converted'])
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        pendingQuotes = data || [];
+        updateQuoteBadge();
+        renderQuotes();
+    } catch (error) {
+        console.error('Error fetching quotes:', error);
+    }
+}
+
+/**
+ * Update the notification badge count
+ */
+function updateQuoteBadge() {
+    const badge = document.getElementById('quote-badge');
+    if (!badge) return;
+
+    // Only count 'new' quotes for notification
+    const count = pendingQuotes.filter(q => q.status === 'new').length;
+    badge.textContent = count;
+
+    if (count > 0) {
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+/**
+ * Render the list of quotes in the modal
+ */
+function renderQuotes() {
+    const list = document.getElementById('quote-list');
+    if (!list) return;
+
+    list.innerHTML = '';
+
+    if (pendingQuotes.length === 0) {
+        list.innerHTML = `
+            <div class="empty-state">
+                <span class="empty-icon">📭</span>
+                <p>No new quote requests.</p>
+            </div>`;
+        return;
+    }
+
+    pendingQuotes.forEach(quote => {
+        const card = document.createElement('div');
+        const isConverted = quote.status === 'converted';
+        const isContacted = quote.status === 'contacted';
+        card.className = `quote-card-item ${isConverted ? 'converted' : 'new'}`;
+
+        // Determine icon based on service
+        let serviceIcon = '❓';
+        if (quote.service === 'mowing') serviceIcon = '🌱';
+        else if (quote.service === 'hedge-trimming') serviceIcon = '✂️';
+        else if (quote.service === 'leaf-cleanup') serviceIcon = '🍂';
+
+        const dateStr = new Date(quote.created_at).toLocaleDateString();
+
+        card.innerHTML = `
+            <div class="quote-header">
+                <div class="quote-name">${quote.name}</div>
+                <span class="quote-service-badge">${serviceIcon} ${quote.service.replace('-', ' ')}</span>
+            </div>
+            <div class="quote-details">
+                <div class="quote-row">
+                    <span class="quote-icon">📍</span>
+                    <span>${quote.address}</span>
+                </div>
+                <div class="quote-row">
+                    <span class="quote-icon">📞</span>
+                    <span>${quote.phone} (${quote.contact_method})</span>
+                </div>
+                <div class="quote-row">
+                    <span class="quote-icon">📅</span>
+                    <span>Requested: ${dateStr}</span>
+                </div>
+            </div>
+            ${quote.message ? `
+            <div class="quote-message">
+                "${quote.message}"
+            </div>` : ''}
+            <div class="quote-actions">
+                <button class="btn-dismiss" onclick="dismissQuote('${quote.id}')">Dismiss</button>
+                ${(quote.contact_method === 'email' && quote.email) ?
+                `<a href="mailto:${quote.email}" class="btn-contact email" target="_blank" onclick="markQuoteContacted('${quote.id}', '${quote.status}')">✉️ Email${isContacted ? ' ✅' : ''}</a>` :
+                `<a href="tel:${quote.phone}" class="btn-contact phone" onclick="markQuoteContacted('${quote.id}', '${quote.status}')">📞 Call${isContacted ? ' ✅' : ''}</a>`
+            }
+                ${isConverted ?
+                `<button class="btn-convert" disabled style="opacity: 0.6; cursor: not-allowed; background: var(--neutral-400);">✅ Converted</button>` :
+                `<button class="btn-convert" onclick="convertQuoteToJob('${quote.id}')">Convert to Job</button>`
+            }
+            </div>
+        `;
+        list.appendChild(card);
+    });
+}
+
+/**
+ * Show the Quote Modal
+ */
+window.showQuoteModal = function () {
+    const modal = document.getElementById('quote-modal');
+    modal.classList.remove('hidden');
+    // Re-fetch to be sure
+    fetchQuotes();
+};
+
+/**
+ * Hide the Quote Modal
+ */
+window.hideQuoteModal = function () {
+    const modal = document.getElementById('quote-modal');
+    modal.classList.add('hidden');
+};
+
+/**
+ * Dismiss a quote (mark as archived/dismissed)
+ */
+window.dismissQuote = async function (id) {
+    if (!confirm('Dismiss this quote request?')) return;
+
+    try {
+        const { error } = await dbClient
+            .from('quote_requests')
+            .update({ status: 'dismissed' })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        fetchQuotes(); // Refresh
+        showToast('Quote dismissed', 'info');
+    } catch (error) {
+        console.error('Error dismissing quote:', error);
+        showToast('Error dismissing quote', 'error');
+    }
+};
+
+/**
+ * Convert a quote to a job (Pre-fill wizard)
+ */
+window.convertQuoteToJob = async function (id) {
+    const quote = pendingQuotes.find(q => q.id == id); // Loose equality for string/int match
+    if (!quote) return;
+
+    // Close quote modal
+    hideQuoteModal();
+
+    // Open Job Wizard and wait for it to be ready (cleared)
+    await openWizard();
+
+    // Pre-fill fields
+    setTimeout(() => {
+        const clientField = document.getElementById('wizard-client');
+        const phoneField = document.getElementById('wizard-phone');
+        const emailField = document.getElementById('wizard-email');
+        const addressField = document.getElementById('wizard-address');
+        const notesField = document.getElementById('wizard-notes');
+
+        if (clientField) clientField.value = quote.name;
+        if (phoneField) phoneField.value = quote.phone;
+        if (emailField) emailField.value = quote.email || '';
+        if (addressField) addressField.value = quote.address;
+
+        if (notesField) {
+            let notes = `Source: Website Quote Request\nService: ${quote.service}\nPreferred Contact: ${quote.contact_method}`;
+            if (quote.message) {
+                notes += `\n\nCustomer Message:\n"${quote.message}"`;
+            }
+            notesField.value = notes;
+        }
+
+        // Force select "Quote" type
+        selectJobType('quote');
+
+        // Double-check UI update
+        const quoteBtn = document.querySelector('.btn-big-type.quote');
+        if (quoteBtn && !quoteBtn.classList.contains('selected')) {
+            console.warn('Force-selecting Quote button');
+            quoteBtn.classList.add('selected');
+        }
+
+        showToast('Quote data pre-filled! Please set price & date.', 'success');
+
+        // Mark quote as 'converted' in background
+        dbClient
+            .from('quote_requests')
+            .update({ status: 'converted' })
+            .eq('id', id)
+            .then(res => {
+                if (!res.error) fetchQuotes(); // Refresh list silently
+            });
+
+    }, 500); // Increased delay to ensure animations stick
+};
 
 document.addEventListener('DOMContentLoaded', async function () {
     // Environment check
@@ -1867,6 +2156,9 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Initialize API connection
     await initializeAPI();
+
+    // Initialize Quotes System (Shared Supabase connection)
+    await initializeQuotesSystem();
 
     // Initialize Calendar
     calendar = initializeCalendar();
@@ -1882,6 +2174,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const fab = document.getElementById('fab-add-job');
     const wizardOverlay = document.getElementById('wizard-overlay');
     const detailsOverlay = document.getElementById('job-details-modal');
+    const quoteOverlay = document.getElementById('quote-modal');
 
     fab?.addEventListener('click', openWizard);
     document.getElementById('wizard-close')?.addEventListener('click', closeWizard);
@@ -1904,4 +2197,28 @@ document.addEventListener('DOMContentLoaded', async function () {
     detailsOverlay?.addEventListener('click', (e) => {
         if (e.target === detailsOverlay) closeJobDetails();
     });
+    quoteOverlay?.addEventListener('click', (e) => {
+        if (e.target === quoteOverlay) hideQuoteModal();
+    });
 });
+/**
+ * Mark a quote as contacted
+ */
+async function markQuoteContacted(id, currentStatus) {
+    // Only update if currently 'new'. We don't want to change 'converted' to 'contacted'.
+    if (currentStatus !== 'new') return;
+
+    try {
+        const { error } = await dbClient
+            .from('quote_requests')
+            .update({ status: 'contacted' })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        // Refresh triggers re-render, which will show the checkmark
+        fetchQuotes();
+    } catch (e) {
+        console.error('Error marking quote contacted:', e);
+    }
+}
