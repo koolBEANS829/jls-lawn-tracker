@@ -1685,7 +1685,7 @@ main {
         top: 100%;
         bottom: auto;
         right: 16px;
-        margin-top: 28px;
+        margin-top: 10px;
 
         /* New styling for "outside" appearance */
         background: white;
@@ -1708,7 +1708,7 @@ main {
 
     /* Push main content down to make room for the floating bell */
     main {
-        padding-top: 80px !important;
+        padding-top: 20px !important;
     }
 
     /* Adjust calendar header to ensure it doesn't conflict if bell is large */
