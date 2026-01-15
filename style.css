@@ -1672,3 +1672,47 @@ main {
     margin-bottom: var(--space-3);
     opacity: 0.5;
 }
+
+/* Responsive Bell for Mobile */
+@media (max-width: 600px) {
+    .app-header {
+        overflow: visible;
+        /* Allow bell to hang out */
+    }
+
+    .btn-quotes {
+        position: absolute;
+        top: 100%;
+        bottom: auto;
+        right: 16px;
+        margin-top: 28px;
+
+        /* New styling for "outside" appearance */
+        background: white;
+        color: var(--neutral-800);
+        border: 1px solid var(--neutral-200);
+        box-shadow: var(--shadow-md);
+
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        font-size: 1.25rem;
+        z-index: 500;
+        /* Ensure above main content */
+    }
+
+    .btn-quotes:hover {
+        background: var(--neutral-100);
+        transform: scale(1.05);
+    }
+
+    /* Push main content down to make room for the floating bell */
+    main {
+        padding-top: 80px !important;
+    }
+
+    /* Adjust calendar header to ensure it doesn't conflict if bell is large */
+    .fc-header-toolbar {
+        margin-bottom: var(--space-4) !important;
+    }
+}
