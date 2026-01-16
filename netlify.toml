@@ -24,3 +24,8 @@
   from = "/api/calendar"
   to = "/.netlify/functions/google-calendar"
   status = 200
+
+[[redirects]]
+  from = "/api/stats"
+  to = "/.netlify/functions/stats"
+  status = 200

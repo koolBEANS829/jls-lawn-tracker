@@ -1437,8 +1437,7 @@ main {
 }
 
 .btn-quotes {
-    position: absolute;
-    right: 0;
+    position: relative;
     background: rgba(255, 255, 255, 0.2);
     border: none;
     border-radius: var(--radius-full);
@@ -1673,46 +1672,558 @@ main {
     opacity: 0.5;
 }
 
-/* Responsive Bell for Mobile */
+/* Responsive Buttons for Mobile */
 @media (max-width: 600px) {
     .app-header {
         overflow: visible;
-        /* Allow bell to hang out */
+        /* Allow buttons to hang out */
     }
 
-    .btn-quotes {
+    .header-buttons {
         position: absolute;
         top: 100%;
         bottom: auto;
         right: 16px;
         margin-top: 10px;
+        z-index: 500;
+        gap: var(--space-2);
+    }
 
-        /* New styling for "outside" appearance */
+    .header-buttons .btn-stats,
+    .header-buttons .btn-quotes {
+        position: relative;
+        top: auto;
+        right: auto;
+        margin-top: 0;
         background: white;
         color: var(--neutral-800);
         border: 1px solid var(--neutral-200);
         box-shadow: var(--shadow-md);
-
         width: 44px;
         height: 44px;
         border-radius: 50%;
         font-size: 1.25rem;
-        z-index: 500;
-        /* Ensure above main content */
     }
 
-    .btn-quotes:hover {
+    .header-buttons .btn-stats:hover,
+    .header-buttons .btn-quotes:hover {
         background: var(--neutral-100);
         transform: scale(1.05);
     }
 
-    /* Push main content down to make room for the floating bell */
+    /* Push main content down to make room for the floating buttons */
     main {
         padding-top: 20px !important;
     }
 
-    /* Adjust calendar header to ensure it doesn't conflict if bell is large */
+    /* Adjust calendar header to ensure it doesn't conflict if buttons are large */
     .fc-header-toolbar {
         margin-bottom: var(--space-4) !important;
+    }
+}
+
+/* ============================================================ */
+/* Header Buttons Container (for Stats + Quotes buttons)        */
+/* ============================================================ */
+
+.header-buttons {
+    position: absolute;
+    right: 0;
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+}
+
+.btn-stats {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: var(--radius-full);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-stats:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+/* ============================================================ */
+/* Statistics Dashboard Modal                                    */
+/* ============================================================ */
+
+.stats-modal-card {
+    max-width: 600px;
+    height: 90vh;
+    max-height: 900px;
+    display: flex;
+    flex-direction: column;
+}
+
+.stats-content {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--neutral-50);
+    padding: var(--space-4);
+}
+
+/* Loading State */
+.stats-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    gap: var(--space-3);
+    color: var(--neutral-500);
+}
+
+.loading-spinner {
+    font-size: 2.5rem;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Error State */
+.stats-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-8);
+    text-align: center;
+    color: var(--neutral-600);
+}
+
+.error-icon {
+    font-size: 3rem;
+}
+
+.btn-retry {
+    padding: var(--space-3) var(--space-6);
+    background: var(--primary-600);
+    color: white;
+    border: none;
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: var(--space-2);
+    transition: all var(--transition-fast);
+}
+
+.btn-retry:hover {
+    background: var(--primary-500);
+}
+
+/* Hero Section */
+.stats-hero {
+    background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-500) 100%);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    margin-bottom: var(--space-4);
+    text-align: center;
+    color: white;
+    box-shadow: var(--shadow-lg);
+}
+
+.hero-stat {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.hero-value {
+    font-size: 3.5rem;
+    font-weight: 700;
+    line-height: 1;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.hero-label {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+.hero-detail {
+    font-size: var(--font-size-sm);
+    opacity: 0.7;
+    margin-top: var(--space-1);
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.stats-grid.four-col {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 480px) {
+    .stats-grid.four-col {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Stat Cards */
+.stat-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--neutral-200);
+    text-align: center;
+    transition: all var(--transition-fast);
+}
+
+.stat-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.stat-card.period-card {
+    border-top: 3px solid var(--primary-500);
+}
+
+.stat-header {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--neutral-600);
+    margin-bottom: var(--space-2);
+}
+
+.stat-value {
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    color: var(--primary-700);
+}
+
+.stat-detail {
+    font-size: var(--font-size-xs);
+    color: var(--neutral-500);
+    margin-top: var(--space-1);
+}
+
+/* Mini Stat Cards */
+.stat-card.mini {
+    padding: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.mini-icon {
+    font-size: 1.5rem;
+}
+
+.mini-value {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--neutral-800);
+}
+
+.mini-label {
+    font-size: var(--font-size-xs);
+    color: var(--neutral-500);
+}
+
+/* Stats Section */
+.stats-section {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    border: 1px solid var(--neutral-200);
+    box-shadow: var(--shadow-sm);
+}
+
+.stats-section h3 {
+    font-size: var(--font-size-base);
+    font-weight: 700;
+    color: var(--neutral-800);
+    margin-bottom: var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* Status Breakdown */
+.status-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--neutral-50);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.status-item.new .status-dot {
+    background: var(--primary-500);
+}
+
+.status-item.contacted .status-dot {
+    background: var(--info);
+}
+
+.status-item.converted .status-dot {
+    background: var(--success);
+}
+
+.status-item.dismissed .status-dot {
+    background: var(--neutral-400);
+}
+
+.status-label {
+    color: var(--neutral-700);
+    font-weight: 500;
+}
+
+.status-count {
+    font-weight: 700;
+    color: var(--neutral-800);
+}
+
+/* Bar Charts */
+.service-breakdown,
+.job-type-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.service-bar,
+.job-type-bar {
+    display: grid;
+    grid-template-columns: 120px 1fr 40px;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.bar-label,
+.service-label {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--neutral-700);
+    white-space: nowrap;
+}
+
+.bar-container {
+    height: 24px;
+    background: var(--neutral-100);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: linear-gradient(90deg, var(--primary-500) 0%, var(--primary-400) 100%);
+    transition: width 0.5s ease-out;
+    min-width: 4px;
+}
+
+.job-type-bar.mowing .bar-fill {
+    background: linear-gradient(90deg, var(--primary-600) 0%, var(--primary-400) 100%);
+}
+
+.job-type-bar.hedge .bar-fill {
+    background: linear-gradient(90deg, #0891b2 0%, #06b6d4 100%);
+}
+
+.job-type-bar.quote .bar-fill {
+    background: linear-gradient(90deg, #d97706 0%, #f59e0b 100%);
+}
+
+.bar-value {
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--neutral-800);
+    text-align: right;
+}
+
+/* Trends Chart */
+.trends-chart {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    height: 150px;
+    padding: var(--space-3) 0;
+    gap: var(--space-2);
+}
+
+.trend-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+}
+
+.trend-bar-stack {
+    height: 100px;
+    width: 100%;
+    max-width: 40px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.trend-bar-total {
+    width: 100%;
+    background: var(--neutral-200);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    position: relative;
+    min-height: 4px;
+    transition: height 0.5s ease-out;
+}
+
+.trend-bar-converted {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, var(--primary-600) 0%, var(--primary-400) 100%);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    transition: height 0.5s ease-out;
+}
+
+.trend-label {
+    font-size: var(--font-size-xs);
+    color: var(--neutral-600);
+    font-weight: 600;
+}
+
+.trend-value {
+    font-size: 0.65rem;
+    color: var(--neutral-500);
+    text-align: center;
+}
+
+/* Chart Legend */
+.chart-legend {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-4);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--neutral-100);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--font-size-xs);
+    color: var(--neutral-600);
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-sm);
+}
+
+.legend-dot.total {
+    background: var(--neutral-200);
+}
+
+.legend-dot.converted {
+    background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-400) 100%);
+}
+
+/* Stats Footer */
+.stats-footer {
+    text-align: center;
+    padding: var(--space-3);
+    color: var(--neutral-400);
+    border-top: 1px solid var(--neutral-200);
+    background: white;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    margin: var(--space-4) calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
+}
+
+/* Empty State Small */
+.empty-state-small {
+    text-align: center;
+    padding: var(--space-4);
+    color: var(--neutral-500);
+    font-style: italic;
+}
+
+/* Responsive Stats for Mobile */
+@media (max-width: 600px) {
+    .stats-modal-card {
+        height: 95vh;
+        max-height: none;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        margin-top: auto;
+    }
+
+    .hero-value {
+        font-size: 2.5rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-2);
+    }
+
+    .stats-grid.four-col {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .service-bar,
+    .job-type-bar {
+        grid-template-columns: 100px 1fr 35px;
+        gap: var(--space-2);
+    }
+
+    .trends-chart {
+        height: 120px;
+    }
+
+    .trend-bar-stack {
+        height: 80px;
+    }
+
+    .status-breakdown {
+        gap: var(--space-2);
+    }
+
+    .status-item {
+        padding: var(--space-1) var(--space-2);
+        font-size: var(--font-size-xs);
     }
 }

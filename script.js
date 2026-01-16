@@ -2222,3 +2222,268 @@ async function markQuoteContacted(id, currentStatus) {
         console.error('Error marking quote contacted:', e);
     }
 }
+
+// ============================================================
+// Statistics Dashboard System
+// ============================================================
+
+/**
+ * Show the Stats Modal and fetch statistics
+ */
+window.showStatsModal = async function () {
+    const modal = document.getElementById('stats-modal');
+    modal.classList.remove('hidden');
+
+    // Show loading state
+    const content = document.getElementById('stats-content');
+    content.innerHTML = `
+        <div class="stats-loading">
+            <span class="loading-spinner">⏳</span>
+            <p>Loading statistics...</p>
+        </div>
+    `;
+
+    // Fetch and render stats
+    await fetchAndRenderStats();
+};
+
+/**
+ * Hide the Stats Modal
+ */
+window.hideStatsModal = function () {
+    const modal = document.getElementById('stats-modal');
+    modal.classList.add('hidden');
+};
+
+/**
+ * Fetch stats from API and render the dashboard
+ */
+async function fetchAndRenderStats() {
+    const content = document.getElementById('stats-content');
+
+    try {
+        const response = await fetch('/api/stats');
+        if (!response.ok) {
+            throw new Error('Failed to fetch statistics');
+        }
+
+        const stats = await response.json();
+        renderStatsDashboard(stats);
+
+    } catch (error) {
+        console.error('Stats fetch error:', error);
+        content.innerHTML = `
+            <div class="stats-error">
+                <span class="error-icon">⚠️</span>
+                <p>Unable to load statistics.</p>
+                <small>${error.message}</small>
+                <button class="btn-retry" onclick="fetchAndRenderStats()">Retry</button>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Render the stats dashboard with all data
+ */
+function renderStatsDashboard(stats) {
+    const content = document.getElementById('stats-content');
+
+    // Calculate the max value for the trend chart
+    const maxQuotes = Math.max(...stats.trends.map(t => t.quotes), 1);
+
+    content.innerHTML = `
+        <!-- Main Conversion Rate Hero -->
+        <div class="stats-hero">
+            <div class="hero-stat">
+                <span class="hero-value">${stats.quotes.conversionRate}%</span>
+                <span class="hero-label">Overall Conversion Rate</span>
+                <span class="hero-detail">${stats.quotes.converted} of ${stats.quotes.total} quotes converted</span>
+            </div>
+        </div>
+        
+        <!-- Time Period Stats -->
+        <div class="stats-grid">
+            <div class="stat-card period-card">
+                <div class="stat-header">📅 Last 7 Days</div>
+                <div class="stat-value">${stats.quotes.last7Days.rate}%</div>
+                <div class="stat-detail">${stats.quotes.last7Days.converted}/${stats.quotes.last7Days.total} quotes</div>
+            </div>
+            <div class="stat-card period-card">
+                <div class="stat-header">📅 Last 30 Days</div>
+                <div class="stat-value">${stats.quotes.last30Days.rate}%</div>
+                <div class="stat-detail">${stats.quotes.last30Days.converted}/${stats.quotes.last30Days.total} quotes</div>
+            </div>
+        </div>
+        
+        <!-- Quote Status Breakdown -->
+        <div class="stats-section">
+            <h3>📝 Quote Status</h3>
+            <div class="status-breakdown">
+                <div class="status-item new">
+                    <span class="status-dot"></span>
+                    <span class="status-label">New</span>
+                    <span class="status-count">${stats.quotes.new}</span>
+                </div>
+                <div class="status-item contacted">
+                    <span class="status-dot"></span>
+                    <span class="status-label">Contacted</span>
+                    <span class="status-count">${stats.quotes.contacted}</span>
+                </div>
+                <div class="status-item converted">
+                    <span class="status-dot"></span>
+                    <span class="status-label">Converted</span>
+                    <span class="status-count">${stats.quotes.converted}</span>
+                </div>
+                <div class="status-item dismissed">
+                    <span class="status-dot"></span>
+                    <span class="status-label">Dismissed</span>
+                    <span class="status-count">${stats.quotes.dismissed}</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quote by Service -->
+        <div class="stats-section">
+            <h3>🛠️ Quotes by Service</h3>
+            <div class="service-breakdown">
+                ${renderServiceBreakdown(stats.quotes.byService)}
+            </div>
+        </div>
+        
+        <!-- Job Stats -->
+        <div class="stats-section">
+            <h3>📋 Job Overview</h3>
+            <div class="stats-grid four-col">
+                <div class="stat-card mini">
+                    <span class="mini-icon">📋</span>
+                    <span class="mini-value">${stats.jobs.total}</span>
+                    <span class="mini-label">Total Jobs</span>
+                </div>
+                <div class="stat-card mini">
+                    <span class="mini-icon">✅</span>
+                    <span class="mini-value">${stats.jobs.completed}</span>
+                    <span class="mini-label">Completed</span>
+                </div>
+                <div class="stat-card mini">
+                    <span class="mini-icon">⏳</span>
+                    <span class="mini-value">${stats.jobs.active}</span>
+                    <span class="mini-label">Active</span>
+                </div>
+                <div class="stat-card mini">
+                    <span class="mini-icon">❌</span>
+                    <span class="mini-value">${stats.jobs.cancelled}</span>
+                    <span class="mini-label">Cancelled</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Jobs by Type -->
+        <div class="stats-section">
+            <h3>🌱 Jobs by Type</h3>
+            <div class="job-type-breakdown">
+                <div class="job-type-bar mowing">
+                    <span class="bar-label">🌱 Mowing</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: ${getPercentage(stats.jobs.byType.mowing, stats.jobs.total)}%"></div>
+                    </div>
+                    <span class="bar-value">${stats.jobs.byType.mowing}</span>
+                </div>
+                <div class="job-type-bar hedge">
+                    <span class="bar-label">✂️ Hedge</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: ${getPercentage(stats.jobs.byType.hedge, stats.jobs.total)}%"></div>
+                    </div>
+                    <span class="bar-value">${stats.jobs.byType.hedge}</span>
+                </div>
+                <div class="job-type-bar quote">
+                    <span class="bar-label">📝 Quote</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: ${getPercentage(stats.jobs.byType.quote, stats.jobs.total)}%"></div>
+                    </div>
+                    <span class="bar-value">${stats.jobs.byType.quote}</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Monthly Trends -->
+        <div class="stats-section">
+            <h3>📈 Monthly Trends</h3>
+            <div class="trends-chart">
+                ${stats.trends.map(t => `
+                    <div class="trend-bar">
+                        <div class="trend-bar-stack">
+                            <div class="trend-bar-total" style="height: ${(t.quotes / maxQuotes) * 100}%">
+                                <div class="trend-bar-converted" style="height: ${t.quotes > 0 ? (t.converted / t.quotes) * 100 : 0}%"></div>
+                            </div>
+                        </div>
+                        <div class="trend-label">${t.month}</div>
+                        <div class="trend-value">${t.quotes} (${t.rate}%)</div>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="chart-legend">
+                <span class="legend-item"><span class="legend-dot total"></span> Total Quotes</span>
+                <span class="legend-item"><span class="legend-dot converted"></span> Converted</span>
+            </div>
+        </div>
+        
+        <div class="stats-footer">
+            <small>Last updated: ${new Date(stats.generatedAt).toLocaleString()}</small>
+        </div>
+    `;
+}
+
+/**
+ * Render service breakdown with bars
+ */
+function renderServiceBreakdown(byService) {
+    const services = Object.entries(byService);
+    if (services.length === 0) {
+        return '<div class="empty-state-small">No quotes yet</div>';
+    }
+
+    const total = services.reduce((sum, [, count]) => sum + count, 0);
+    const icons = {
+        'mowing': '🌱',
+        'hedge-trimming': '✂️',
+        'leaf-cleanup': '🍂',
+        'other': '❓',
+        'unknown': '❓'
+    };
+
+    return services.map(([service, count]) => `
+        <div class="service-bar">
+            <span class="service-label">${icons[service] || '❓'} ${formatServiceName(service)}</span>
+            <div class="bar-container">
+                <div class="bar-fill" style="width: ${getPercentage(count, total)}%"></div>
+            </div>
+            <span class="bar-value">${count}</span>
+        </div>
+    `).join('');
+}
+
+/**
+ * Format service name for display
+ */
+function formatServiceName(service) {
+    return service
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/**
+ * Calculate percentage safely
+ */
+function getPercentage(value, total) {
+    if (total === 0) return 0;
+    return Math.round((value / total) * 100);
+}
+
+// Setup Stats Modal close on backdrop click
+document.addEventListener('DOMContentLoaded', function () {
+    const statsOverlay = document.getElementById('stats-modal');
+    statsOverlay?.addEventListener('click', (e) => {
+        if (e.target === statsOverlay) hideStatsModal();
+    });
+});

@@ -29,10 +29,15 @@
     <header class="app-header">
         <div class="header-content">
             <h1>JLS Maintenance Job Tracker</h1>
-            <button id="btn-quotes" class="btn-quotes" aria-label="View Quote Requests" onclick="showQuoteModal()">
-                🔔
-                <span id="quote-badge" class="quote-badge hidden">0</span>
-            </button>
+            <div class="header-buttons">
+                <button id="btn-stats" class="btn-stats" aria-label="View Statistics" onclick="showStatsModal()">
+                    📊
+                </button>
+                <button id="btn-quotes" class="btn-quotes" aria-label="View Quote Requests" onclick="showQuoteModal()">
+                    🔔
+                    <span id="quote-badge" class="quote-badge hidden">0</span>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -252,6 +257,21 @@
                             <span class="empty-icon">📭</span>
                             <p>No new quote requests.</p>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Stats Dashboard Modal -->
+        <div id="stats-modal" class="wizard-overlay hidden">
+            <div class="wizard-card stats-modal-card">
+                <div class="wizard-header">
+                    <h2>📊 Quote & Job Statistics</h2>
+                    <span id="stats-modal-close" class="close-btn" onclick="hideStatsModal()">&times;</span>
+                </div>
+                <div class="stats-content" id="stats-content">
+                    <div class="stats-loading">
+                        <span class="loading-spinner">⏳</span>
+                        <p>Loading statistics...</p>
                     </div>
                 </div>
             </div>
