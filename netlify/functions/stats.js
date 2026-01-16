@@ -1,8 +1,8 @@
 // Netlify Function: Stats API
 // Provides quote-to-job conversion statistics
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://eplsowiliweiilcoomtd.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const SUPABASE_URL = 'https://naxhczwlfymynqiescmn.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5heGhjendsZnlteW5xaWVzY21uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNzI3NDgsImV4cCI6MjA4Mjk0ODc0OH0.AG-OeNODU87hhw124x1gryh0CB8dP4SjDyUIIM35HRw';
 
 // ============================================================
 // Supabase Helpers
