@@ -2323,3 +2323,169 @@ async function markQuoteContacted(id, currentStatus) {
         console.error('Error marking quote contacted:', e);
     }
 }
+
+// ============================================================
+// Statistics Modal
+// ============================================================
+
+let currentStatsPeriod = 'week';
+let cachedJobs = [];
+
+/**
+ * Show the statistics modal
+ */
+window.showStatsModal = async function () {
+    const modal = document.getElementById('stats-modal');
+    modal.classList.remove('hidden');
+    await refreshStats();
+};
+
+/**
+ * Hide the statistics modal
+ */
+window.hideStatsModal = function () {
+    const modal = document.getElementById('stats-modal');
+    modal.classList.add('hidden');
+};
+
+/**
+ * Set the time period and refresh stats
+ */
+window.setStatsPeriod = async function (period) {
+    currentStatsPeriod = period;
+
+    // Update active button
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.period === period);
+    });
+
+    await refreshStats();
+};
+
+/**
+ * Get date range for the selected period
+ */
+function getDateRange(period) {
+    const now = new Date();
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+
+    let start = new Date(now);
+
+    switch (period) {
+        case 'week':
+            // Start of this week (Sunday)
+            start.setDate(now.getDate() - now.getDay());
+            start.setHours(0, 0, 0, 0);
+            break;
+        case 'month':
+            // Start of this month
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            break;
+        case '30days':
+            // Last 30 days
+            start.setDate(now.getDate() - 30);
+            start.setHours(0, 0, 0, 0);
+            break;
+        case 'all':
+            // All time - set to a very old date
+            start = new Date(2020, 0, 1);
+            break;
+    }
+
+    return { start, end };
+}
+
+/**
+ * Fetch jobs and calculate stats
+ */
+async function refreshStats() {
+    try {
+        // Fetch all jobs
+        if (apiAvailable) {
+            const response = await fetch(CONFIG.api.baseUrl);
+            if (response.ok) {
+                cachedJobs = await response.json();
+            }
+        } else {
+            cachedJobs = Storage.get(CONFIG.storage.jobsKey) || [];
+        }
+
+        calculateAndRenderStats();
+    } catch (error) {
+        console.error('Error fetching stats:', error);
+    }
+}
+
+/**
+ * Calculate statistics and update the UI
+ */
+function calculateAndRenderStats() {
+    const { start, end } = getDateRange(currentStatsPeriod);
+
+    // Filter jobs by date
+    const filteredJobs = cachedJobs.filter(job => {
+        const jobDate = new Date(job.start_time);
+        return jobDate >= start && jobDate <= end;
+    });
+
+    // Filter quote requests by date
+    const filteredQuotes = pendingQuotes.filter(quote => {
+        const quoteDate = new Date(quote.created_at);
+        return quoteDate >= start && quoteDate <= end;
+    });
+
+    // Count jobs by type
+    const mowingJobs = filteredJobs.filter(j => j.job_type === 'mowing');
+    const hedgeJobs = filteredJobs.filter(j => j.job_type === 'hedge');
+    const quoteJobs = filteredJobs.filter(j => j.job_type === 'quote');
+    const actualJobs = [...mowingJobs, ...hedgeJobs]; // Non-quote jobs
+
+    // Count by status
+    const pendingJobs = filteredJobs.filter(j => j.status === 'pending' || !j.status);
+    const doneJobs = filteredJobs.filter(j => j.status === 'done');
+    const cancelledJobs = filteredJobs.filter(j => j.status === 'cancelled');
+
+    // Revenue (only from done jobs)
+    const completedWithPrice = doneJobs.filter(j => j.price && j.job_type !== 'quote');
+    const totalRevenue = completedWithPrice.reduce((sum, j) => sum + (parseFloat(j.price) || 0), 0);
+    const avgPrice = completedWithPrice.length > 0 ? totalRevenue / completedWithPrice.length : 0;
+
+    // Conversion rate: quote requests that became jobs
+    // Count quote requests + quote-type jobs as total inquiries
+    const totalInquiries = filteredQuotes.length + quoteJobs.length;
+    const convertedToJobs = actualJobs.length;
+    const conversionRate = totalInquiries > 0 ? (convertedToJobs / totalInquiries * 100) : 0;
+
+    // Update UI
+    document.getElementById('stat-quotes').textContent = totalInquiries;
+    document.getElementById('stat-jobs').textContent = actualJobs.length;
+    document.getElementById('stat-conversion').textContent = conversionRate.toFixed(0) + '%';
+
+    document.getElementById('stat-revenue').textContent = '$' + totalRevenue.toFixed(0);
+    document.getElementById('stat-avg-price').textContent = '$' + avgPrice.toFixed(0);
+
+    // Service breakdown with bars
+    const totalByType = mowingJobs.length + hedgeJobs.length + quoteJobs.length;
+    const mowingPct = totalByType > 0 ? (mowingJobs.length / totalByType * 100) : 0;
+    const hedgePct = totalByType > 0 ? (hedgeJobs.length / totalByType * 100) : 0;
+    const quotePct = totalByType > 0 ? (quoteJobs.length / totalByType * 100) : 0;
+
+    document.getElementById('stat-mowing').textContent = mowingJobs.length;
+    document.getElementById('stat-hedge').textContent = hedgeJobs.length;
+    document.getElementById('stat-quote-jobs').textContent = quoteJobs.length;
+
+    // Update breakdown bars
+    const mowingBar = document.querySelector('.breakdown-fill.mowing');
+    const hedgeBar = document.querySelector('.breakdown-fill.hedge');
+    const quoteBar = document.querySelector('.breakdown-fill.quote');
+
+    if (mowingBar) mowingBar.style.width = mowingPct + '%';
+    if (hedgeBar) hedgeBar.style.width = hedgePct + '%';
+    if (quoteBar) quoteBar.style.width = quotePct + '%';
+
+    // Status breakdown
+    document.getElementById('stat-pending').textContent = pendingJobs.length;
+    document.getElementById('stat-done').textContent = doneJobs.length;
+    document.getElementById('stat-cancelled').textContent = cancelledJobs.length;
+}

@@ -29,10 +29,15 @@
     <header class="app-header">
         <div class="header-content">
             <h1>JLS Maintenance Job Tracker</h1>
-            <button id="btn-quotes" class="btn-quotes" aria-label="View Quote Requests" onclick="showQuoteModal()">
-                🔔
-                <span id="quote-badge" class="quote-badge hidden">0</span>
-            </button>
+            <div class="header-buttons">
+                <button id="btn-stats" class="btn-header-icon" aria-label="View Statistics" onclick="showStatsModal()">
+                    📊
+                </button>
+                <button id="btn-quotes" class="btn-quotes" aria-label="View Quote Requests" onclick="showQuoteModal()">
+                    🔔
+                    <span id="quote-badge" class="quote-badge hidden">0</span>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -253,6 +258,108 @@
                         <div class="empty-state">
                             <span class="empty-icon">📭</span>
                             <p>No new quote requests.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Statistics Modal -->
+        <div id="stats-modal" class="wizard-overlay hidden">
+            <div class="wizard-card stats-modal-card">
+                <div class="wizard-header stats-header">
+                    <h2>📊 Statistics</h2>
+                    <span class="close-btn" onclick="hideStatsModal()">&times;</span>
+                </div>
+                <div class="stats-content">
+                    <!-- Time Period Selector -->
+                    <div class="time-period-selector">
+                        <button class="period-btn active" data-period="week" onclick="setStatsPeriod('week')">This
+                            Week</button>
+                        <button class="period-btn" data-period="month" onclick="setStatsPeriod('month')">This
+                            Month</button>
+                        <button class="period-btn" data-period="30days" onclick="setStatsPeriod('30days')">Last 30
+                            Days</button>
+                        <button class="period-btn" data-period="all" onclick="setStatsPeriod('all')">All Time</button>
+                    </div>
+
+                    <!-- Conversion Tracking -->
+                    <div class="stats-section">
+                        <h3>📈 Conversion</h3>
+                        <div class="stats-row">
+                            <div class="stat-card">
+                                <span class="stat-label">Quote Requests</span>
+                                <span class="stat-value" id="stat-quotes">0</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label">Jobs Created</span>
+                                <span class="stat-value" id="stat-jobs">0</span>
+                            </div>
+                            <div class="stat-card highlight">
+                                <span class="stat-label">Conversion Rate</span>
+                                <span class="stat-value" id="stat-conversion">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Revenue Analytics -->
+                    <div class="stats-section">
+                        <h3>💰 Revenue</h3>
+                        <div class="stats-row">
+                            <div class="stat-card">
+                                <span class="stat-label">Total Revenue</span>
+                                <span class="stat-value" id="stat-revenue">$0</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label">Avg Job Price</span>
+                                <span class="stat-value" id="stat-avg-price">$0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service Breakdown -->
+                    <div class="stats-section">
+                        <h3>🛠️ Services</h3>
+                        <div class="breakdown-list" id="service-breakdown">
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">🌱 Mowing</span>
+                                <div class="breakdown-bar">
+                                    <div class="breakdown-fill mowing" style="width: 0%"></div>
+                                </div>
+                                <span class="breakdown-value" id="stat-mowing">0</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">✂️ Hedge</span>
+                                <div class="breakdown-bar">
+                                    <div class="breakdown-fill hedge" style="width: 0%"></div>
+                                </div>
+                                <span class="breakdown-value" id="stat-hedge">0</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">📝 Quotes</span>
+                                <div class="breakdown-bar">
+                                    <div class="breakdown-fill quote" style="width: 0%"></div>
+                                </div>
+                                <span class="breakdown-value" id="stat-quote-jobs">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status Breakdown -->
+                    <div class="stats-section">
+                        <h3>📋 Job Status</h3>
+                        <div class="status-pills">
+                            <div class="status-pill pending">
+                                <span class="status-count" id="stat-pending">0</span>
+                                <span class="status-name">Pending</span>
+                            </div>
+                            <div class="status-pill done">
+                                <span class="status-count" id="stat-done">0</span>
+                                <span class="status-name">Done</span>
+                            </div>
+                            <div class="status-pill cancelled">
+                                <span class="status-count" id="stat-cancelled">0</span>
+                                <span class="status-name">Cancelled</span>
+                            </div>
                         </div>
                     </div>
                 </div>
