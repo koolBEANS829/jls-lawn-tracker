@@ -52,8 +52,12 @@ const CONFIG = {
     api: {
         baseUrl: '/api/jobs',  // Netlify Function handles Supabase calls
         calendarUrl: '/api/calendar',  // Google Calendar sync endpoint
+        // Jobs database
         supabaseUrl: 'https://eplsowiliweiilcoomtd.supabase.co',
-        supabaseKey: 'sb_publishable_yU09AbfqQC2uq2AAsbKrNA_KHDrKLIl'
+        supabaseKey: 'sb_publishable_yU09AbfqQC2uq2AAsbKrNA_KHDrKLIl',
+        // Contacts/Quotes database (separate)
+        contactsSupabaseUrl: 'https://naxhczwlfymynqiescmn.supabase.co',
+        contactsSupabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5heGhjendsZnlteW5xaWVzY21uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNzI3NDgsImV4cCI6MjA4Mjk0ODc0OH0.AG-OeNODU87hhw124x1gryh0CB8dP4SjDyUIIM35HRw'
     },
     storage: {
         jobsKey: 'jls_local_jobs',
@@ -2010,9 +2014,9 @@ async function initializeQuotesSystem() {
     }
 
     try {
-        // Initialize Supabase Client
-        dbClient = supabase.createClient(CONFIG.api.supabaseUrl, CONFIG.api.supabaseKey);
-        console.log('✅ Supabase Client Initialized');
+        // Initialize Supabase Client for CONTACTS database (quote requests)
+        dbClient = supabase.createClient(CONFIG.api.contactsSupabaseUrl, CONFIG.api.contactsSupabaseKey);
+        console.log('✅ Contacts/Quotes Supabase Client Initialized');
 
         // Initial Fetch
         await fetchQuotes();
