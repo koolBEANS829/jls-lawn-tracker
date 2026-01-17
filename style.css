@@ -1974,3 +1974,97 @@ main {
     font-weight: 600;
     opacity: 0.9;
 }
+
+/* Mobile Responsive - Stats Modal */
+@media (max-width: 480px) {
+    .stats-modal-card {
+        max-width: 100%;
+        margin: 0;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        max-height: 95vh;
+    }
+
+    .stats-content {
+        padding: var(--space-3);
+        gap: var(--space-3);
+    }
+
+    .time-period-selector {
+        gap: var(--space-1);
+    }
+
+    .period-btn {
+        padding: var(--space-1) var(--space-2);
+        font-size: var(--font-size-xs);
+    }
+
+    .stats-section {
+        padding: var(--space-3);
+    }
+
+    .stats-section h3 {
+        font-size: var(--font-size-sm);
+        margin-bottom: var(--space-2);
+    }
+
+    .stats-row {
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-2);
+    }
+
+    .stat-card {
+        padding: var(--space-2);
+    }
+
+    .stat-label {
+        font-size: 0.65rem;
+    }
+
+    .stat-value {
+        font-size: var(--font-size-base);
+    }
+
+    .breakdown-item {
+        grid-template-columns: 70px 1fr 30px;
+        gap: var(--space-1);
+    }
+
+    .breakdown-label {
+        font-size: var(--font-size-xs);
+    }
+
+    .breakdown-bar {
+        height: 10px;
+    }
+
+    .breakdown-value {
+        font-size: var(--font-size-xs);
+    }
+
+    .status-pills {
+        gap: var(--space-2);
+    }
+
+    .status-pill {
+        padding: var(--space-2) var(--space-3);
+        min-width: 70px;
+    }
+
+    .status-count {
+        font-size: var(--font-size-lg);
+    }
+
+    .status-name {
+        font-size: 0.65rem;
+    }
+
+    .header-buttons {
+        gap: var(--space-1);
+    }
+
+    .btn-header-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+    }
+}
