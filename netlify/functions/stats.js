@@ -1,39 +1,58 @@
 // Netlify Function: Stats API
-// Provides quote-to-job conversion statistics
+// Provides quote-to-job conversion statistics by aggregating data from TWO databases
+// DB 1: Quotes/Reachouts (Client DB)
+// DB 2: Jobs (Server DB)
 
-const SUPABASE_URL = 'https://naxhczwlfymynqiescmn.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5heGhjendsZnlteW5xaWVzY21uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNzI3NDgsImV4cCI6MjA4Mjk0ODc0OH0.AG-OeNODU87hhw124x1gryh0CB8dP4SjDyUIIM35HRw';
+// Quotes DB Config (Reachouts)
+const QUOTES_URL = 'https://naxhczwlfymynqiescmn.supabase.co';
+const QUOTES_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5heGhjendsZnlteW5xaWVzY21uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNzI3NDgsImV4cCI6MjA4Mjk0ODc0OH0.AG-OeNODU87hhw124x1gryh0CB8dP4SjDyUIIM35HRw';
+
+// Jobs DB Config (Jobs) - Uses Netlify Env Vars or Fallback to old DB ID
+const JOBS_URL = process.env.SUPABASE_URL || 'https://eplsowiliweiilcoomtd.supabase.co';
+const JOBS_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 // ============================================================
 // Supabase Helpers
 // ============================================================
 
-async function supabaseRequest(path, options = {}) {
-    const url = `${SUPABASE_URL}/rest/v1/${path}`;
+async function fetchFromSupabase(baseUrl, apiKey, path, options = {}) {
+    if (!apiKey) {
+        console.warn(`Missing API Key for request to ${baseUrl}`);
+        return []; // Return empty array if key is missing (e.g. searching for jobs without env var)
+    }
+
+    const url = `${baseUrl}/rest/v1/${path}`;
 
     const headers = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'apikey': apiKey,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'Prefer': options.prefer || 'return=representation'
     };
 
-    const response = await fetch(url, {
-        method: options.method || 'GET',
-        headers,
-        body: options.body ? JSON.stringify(options.body) : undefined
-    });
+    try {
+        const response = await fetch(url, {
+            method: options.method || 'GET',
+            headers,
+            body: options.body ? JSON.stringify(options.body) : undefined
+        });
 
-    if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Supabase error: ${response.status} - ${error}`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Supabase Error (${path}): ${response.status} - ${errorText}`);
+            // Don't throw, just return empty so partial dash loads
+            return [];
+        }
+
+        if (response.status === 204) {
+            return [];
+        }
+
+        return await response.json();
+    } catch (err) {
+        console.error(`Fetch Error (${path}):`, err);
+        return [];
     }
-
-    if (response.status === 204) {
-        return null;
-    }
-
-    return response.json();
 }
 
 // ============================================================
@@ -55,14 +74,6 @@ exports.handler = async (event, context) => {
         return { statusCode: 204, headers: corsHeaders, body: '' };
     }
 
-    if (!SUPABASE_KEY) {
-        return {
-            statusCode: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ error: 'Server configuration error: Missing SUPABASE_SERVICE_KEY' })
-        };
-    }
-
     try {
         // Only handle GET requests
         if (event.httpMethod !== 'GET') {
@@ -73,11 +84,11 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // Fetch all quote requests (all statuses for comprehensive stats)
-        const quotes = await supabaseRequest('quote_requests?select=id,status,created_at,service,name');
-
-        // Fetch all jobs to count completed jobs
-        const jobs = await supabaseRequest('jobs?select=id,status,job_type,created_at,title');
+        // Parallel Fetch: Get Quotes from DB1 and Jobs from DB2
+        const [quotes, jobs] = await Promise.all([
+            fetchFromSupabase(QUOTES_URL, QUOTES_KEY, 'quote_requests?select=id,status,created_at,service,name'),
+            fetchFromSupabase(JOBS_URL, JOBS_KEY, 'jobs?select=id,status,job_type,created_at,title')
+        ]);
 
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);

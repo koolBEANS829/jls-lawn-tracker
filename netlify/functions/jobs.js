@@ -1,7 +1,7 @@
 // Netlify Function: Jobs API
 // This handles all job CRUD operations with Google Calendar sync
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://naxhczwlfymynqiescmn.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://eplsowiliweiilcoomtd.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 // Google Calendar configuration
