@@ -29,15 +29,10 @@
     <header class="app-header">
         <div class="header-content">
             <h1>JLS Maintenance Job Tracker</h1>
-            <div class="header-buttons">
-                <button id="btn-stats" class="btn-stats" aria-label="View Statistics" onclick="showStatsModal()">
-                    📊
-                </button>
-                <button id="btn-quotes" class="btn-quotes" aria-label="View Quote Requests" onclick="showQuoteModal()">
-                    🔔
-                    <span id="quote-badge" class="quote-badge hidden">0</span>
-                </button>
-            </div>
+            <button id="btn-quotes" class="btn-quotes" aria-label="View Quote Requests" onclick="showQuoteModal()">
+                🔔
+                <span id="quote-badge" class="quote-badge hidden">0</span>
+            </button>
         </div>
     </header>
 
@@ -220,7 +215,6 @@
                 <div class="wizard-actions">
                     <button id="btn-cancel-job" type="button" class="btn-cancel" onclick="cancelJob()">CANCEL
                         JOB</button>
-                    <button id="btn-copy-job" type="button" class="btn-copy" onclick="copyJob()">COPY</button>
                     <button id="btn-edit-job" type="button" class="btn-edit" onclick="editJob()">EDIT</button>
                     <button id="btn-mark-done" type="button" class="btn-complete" onclick="markJobAsDone()">MARK AS
                         DONE</button>
@@ -258,21 +252,6 @@
                             <span class="empty-icon">📭</span>
                             <p>No new quote requests.</p>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Stats Dashboard Modal -->
-        <div id="stats-modal" class="wizard-overlay hidden">
-            <div class="wizard-card stats-modal-card">
-                <div class="wizard-header">
-                    <h2>📊 Quote & Job Statistics</h2>
-                    <span id="stats-modal-close" class="close-btn" onclick="hideStatsModal()">&times;</span>
-                </div>
-                <div class="stats-content" id="stats-content">
-                    <div class="stats-loading">
-                        <span class="loading-spinner">⏳</span>
-                        <p>Loading statistics...</p>
                     </div>
                 </div>
             </div>
