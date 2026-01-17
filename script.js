@@ -1709,13 +1709,23 @@ function openJobDetails(event) {
     // Type Badge
     const typeEl = document.getElementById('view-job-type-badge');
     const type = event.extendedProps?.type || 'mowing';
-    let typeText = type === 'mowing' ? 'MOWING' : 'HEDGE TRIMMING';
+    let typeText = type === 'mowing' ? 'MOWING' : type === 'hedge' ? 'HEDGE TRIMMING' : 'QUOTE';
     if (event.extendedProps?.is_recurring) {
         typeText += ' <span class="recurring-badge">🔁 RECURRING</span>';
     }
     if (typeEl) {
         typeEl.innerHTML = typeText;
-        typeEl.className = `job-type-badge ${type === 'mowing' ? 'mowing' : 'hedge'}`;
+        typeEl.className = `job-type-badge ${type}`;
+    }
+
+    // Show/Hide Convert to Job button (only for quotes)
+    const convertBtn = document.getElementById('btn-convert-quote');
+    if (convertBtn) {
+        if (type === 'quote') {
+            convertBtn.classList.remove('hidden');
+        } else {
+            convertBtn.classList.add('hidden');
+        }
     }
 
     // Notes & Price
@@ -1802,6 +1812,97 @@ function closeJobDetails() {
 }
 
 window.closeJobDetails = closeJobDetails;
+
+/**
+ * Converts a quote calendar event into a real job.
+ * Opens the wizard pre-filled with the quote data, allowing user to select job type.
+ * Creates a NEW job while keeping the original quote.
+ */
+window.convertCalendarQuoteToJob = async function () {
+    const event = calendar?.getEventById(currentEventId);
+    if (!event) {
+        console.error('No event found for conversion');
+        return;
+    }
+
+    // Close the details modal
+    closeJobDetails();
+
+    // Set to NEW job mode (not edit) so we create a new job and keep the quote
+    isEditMode = false;
+    editScope = 'single';
+
+    // Clear validation errors
+    clearValidationErrors();
+
+    // Update wizard title
+    document.getElementById('wizard-title').textContent = 'New Job from Quote';
+
+    // Pre-fill all the fields from the quote
+    const clientEl = document.getElementById('wizard-client');
+    if (clientEl) {
+        // Extract client name from title (remove " - Quote" suffix if present)
+        let clientName = event.title || '';
+        clientName = clientName.replace(/\s*-\s*Quote$/i, '');
+        clientEl.value = clientName;
+    }
+
+    const phoneEl = document.getElementById('wizard-phone');
+    if (phoneEl) phoneEl.value = event.extendedProps?.phone || '';
+
+    const emailEl = document.getElementById('wizard-email');
+    if (emailEl) emailEl.value = event.extendedProps?.email || '';
+
+    const addressEl = document.getElementById('wizard-address');
+    if (addressEl) addressEl.value = event.extendedProps?.address || '';
+
+    const priceEl = document.getElementById('wizard-price');
+    if (priceEl) priceEl.value = event.extendedProps?.price || '';
+
+    const dateEl = document.getElementById('wizard-date');
+    if (dateEl && event.start) {
+        try {
+            dateEl.value = formatLocalDateTime(new Date(event.start));
+            dateEl.disabled = false;
+        } catch (e) {
+            console.warn('Date parsing error:', e);
+            dateEl.value = '';
+        }
+    }
+
+    const notesEl = document.getElementById('wizard-notes');
+    if (notesEl) {
+        const existingNotes = event.extendedProps?.notes || '';
+        notesEl.value = existingNotes ? `Created from quote\n\n${existingNotes}` : 'Created from quote';
+    }
+
+    // Don't pre-select any job type - let user choose mowing or hedge
+    selectedJobType = '';
+    document.querySelectorAll('.btn-big-type').forEach(btn => btn.classList.remove('selected'));
+
+    // Show price container (was hidden for quote type)
+    const priceContainer = document.getElementById('price-container');
+    if (priceContainer) priceContainer.classList.remove('hidden');
+
+    // Hide recurring options for conversion
+    const recurringContainer = document.getElementById('recurring-checkbox-container');
+    if (recurringContainer) recurringContainer.classList.remove('hidden');
+
+    const recurringCheckbox = document.getElementById('wizard-recurring');
+    if (recurringCheckbox) {
+        recurringCheckbox.checked = false;
+        recurringCheckbox.disabled = false;
+    }
+
+    const recurringOptions = document.getElementById('recurring-options');
+    if (recurringOptions) recurringOptions.classList.add('hidden');
+
+    // Open the wizard
+    const wizardOverlay = document.getElementById('wizard-overlay');
+    if (wizardOverlay) wizardOverlay.classList.remove('hidden');
+
+    showToast('Select job type: Mowing or Hedge', 'info');
+};
 
 // ============================================================
 // Calendar Initialization
