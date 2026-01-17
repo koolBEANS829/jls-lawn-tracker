@@ -1465,6 +1465,27 @@ main {
     margin: 0 auto;
 }
 
+.btn-header-left {
+    position: absolute;
+    left: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: var(--radius-full);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-header-left:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
 .btn-quotes {
     position: absolute;
     right: 0;
@@ -1702,28 +1723,19 @@ main {
     opacity: 0.5;
 }
 
-/* Responsive Bell for Mobile */
+/* Responsive Buttons for Mobile */
 @media (max-width: 600px) {
     .app-header {
         overflow: visible;
         /* Allow buttons to hang out */
     }
 
-    .header-buttons {
+    /* Stats button - floats on left */
+    .btn-header-left {
         position: absolute;
         top: 100%;
-        right: 16px;
+        left: 16px;
         margin-top: 10px;
-        display: flex;
-        gap: var(--space-2);
-        z-index: 500;
-    }
-
-    .header-buttons .btn-quotes {
-        position: relative;
-        top: auto;
-        right: auto;
-        margin-top: 0;
 
         /* Floating button styling */
         background: white;
@@ -1735,9 +1747,35 @@ main {
         height: 44px;
         border-radius: 50%;
         font-size: 1.25rem;
+        z-index: 500;
     }
 
-    .header-buttons .btn-quotes:hover {
+    .btn-header-left:hover {
+        background: var(--neutral-100);
+        transform: scale(1.05);
+    }
+
+    /* Bell button - floats on right */
+    .btn-quotes {
+        position: absolute;
+        top: 100%;
+        right: 16px;
+        margin-top: 10px;
+
+        /* Floating button styling */
+        background: white;
+        color: var(--neutral-800);
+        border: 1px solid var(--neutral-200);
+        box-shadow: var(--shadow-md);
+
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        font-size: 1.25rem;
+        z-index: 500;
+    }
+
+    .btn-quotes:hover {
         background: var(--neutral-100);
         transform: scale(1.05);
     }

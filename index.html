@@ -28,11 +28,11 @@
 <body>
     <header class="app-header">
         <div class="header-content">
+            <button id="btn-stats" class="btn-header-left" aria-label="View Statistics" onclick="showStatsModal()">
+                📊
+            </button>
             <h1>JLS Maintenance Job Tracker</h1>
             <div class="header-buttons">
-                <button id="btn-stats" class="btn-quotes" aria-label="View Statistics" onclick="showStatsModal()">
-                    📊
-                </button>
                 <button id="btn-quotes" class="btn-quotes" aria-label="View Quote Requests" onclick="showQuoteModal()">
                     🔔
                     <span id="quote-badge" class="quote-badge hidden">0</span>
