@@ -788,6 +788,25 @@ main {
     box-shadow: var(--shadow-sm);
 }
 
+.btn-copy {
+    flex: 1;
+    padding: var(--space-3) var(--space-4);
+    background: linear-gradient(135deg, #a855f7 0%, #8b5cf6 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius-lg);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-copy:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
 .btn-edit {
     flex: 1;
     padding: var(--space-3) var(--space-4);

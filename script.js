@@ -1521,6 +1521,78 @@ window.editJob = async function () {
 };
 
 /**
+ * Clones the current job details into a new job wizard.
+ */
+window.copyJob = async function () {
+    if (!currentEventId) return;
+
+    const calendarEl = document.getElementById('calendar');
+    // Access internal API - safest way without global var if initialized properly
+    const calendarApi = calendarEl ? calendarEl._fullCalendarApi : null;
+    const event = calendarApi ? calendarApi.getEventById(currentEventId) : null;
+
+    if (!event) {
+        showToast('Could not find job details to copy.', 'error');
+        return;
+    }
+
+    closeJobDetails();
+    await openWizard();
+
+    // Small delay to ensure wizard is ready and cleared
+    setTimeout(() => {
+        isEditMode = false; // Ensure we are creating NEW, not editing
+        currentEventId = null; // Detach from original job
+        document.getElementById('wizard-title').textContent = 'New Job (Copy)';
+
+        const props = event.extendedProps || {};
+
+        // Client Name (strip price if present in title)
+        const clientField = document.getElementById('wizard-client');
+        if (clientField) {
+            clientField.value = (event.title || '').replace(/\s*\(\$[\d.]+\)$/, '');
+        }
+
+        // Phone
+        const phoneField = document.getElementById('wizard-phone');
+        if (phoneField) phoneField.value = props.phone || '';
+
+        // Email
+        const emailField = document.getElementById('wizard-email');
+        if (emailField) emailField.value = props.email || '';
+
+        // Address
+        const addressField = document.getElementById('wizard-address');
+        if (addressField) addressField.value = props.address || '';
+
+        // Price
+        const priceField = document.getElementById('wizard-price');
+        let price = props.price;
+        if (!price && event.title) {
+            const match = event.title.match(/\(\$(\d+(?:\.\d{2})?)\)/);
+            if (match) price = match[1];
+        }
+        if (priceField) priceField.value = price || '';
+
+        // Notes
+        const notesField = document.getElementById('wizard-notes');
+        if (notesField) {
+            notesField.value = props.notes || '';
+            // auto-expand height if needed
+            notesField.style.height = 'auto';
+            notesField.style.height = notesField.scrollHeight + 'px';
+        }
+
+        // Job Type
+        if (props.type) {
+            selectJobType(props.type);
+        }
+
+        showToast('Job copied! Please select a date.', 'success');
+    }, 200);
+};
+
+/**
  * Called when user selects an edit scope from the modal.
  */
 window.selectEditScope = function (scope) {
