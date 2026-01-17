@@ -7,9 +7,10 @@
 const QUOTES_URL = 'https://naxhczwlfymynqiescmn.supabase.co';
 const QUOTES_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5heGhjendsZnlteW5xaWVzY21uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNzI3NDgsImV4cCI6MjA4Mjk0ODc0OH0.AG-OeNODU87hhw124x1gryh0CB8dP4SjDyUIIM35HRw';
 
-// Jobs DB Config (Jobs) - Uses Netlify Env Vars or Fallback to old DB ID
-const JOBS_URL = process.env.SUPABASE_URL || 'https://naxhczwlfymynqiescmn.supabase.co';
-const JOBS_KEY = process.env.SUPABASE_SERVICE_KEY;
+// Jobs DB Config (Jobs)
+// Force connection to same DB as Quotes to avoid split-brain with old Env Vars
+const JOBS_URL = 'https://naxhczwlfymynqiescmn.supabase.co';
+const JOBS_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5heGhjendsZnlteW5xaWVzY21uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNzI3NDgsImV4cCI6MjA4Mjk0ODc0OH0.AG-OeNODU87hhw124x1gryh0CB8dP4SjDyUIIM35HRw';
 
 // ============================================================
 // Supabase Helpers
