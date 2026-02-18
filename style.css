@@ -266,6 +266,7 @@ main {
     cursor: pointer !important;
     transition: all var(--transition-fast) !important;
     box-shadow: var(--shadow-xs);
+    overflow: hidden !important;
 }
 
 .fc-event.job-mowing {
@@ -287,6 +288,7 @@ main {
 
 .fc-event-main {
     padding: 0 !important;
+    overflow: hidden !important;
 }
 
 .event-content {
@@ -343,6 +345,12 @@ main {
 .fc-event.job-completed {
     background: linear-gradient(135deg, var(--neutral-500) 0%, var(--neutral-400) 100%) !important;
     opacity: 0.7;
+}
+
+.job-completed .event-content,
+.fc-event.job-completed .fc-event-main-frame,
+.fc-event.job-completed .fc-event-title,
+.fc-event.job-completed .fc-list-event-title {
     text-decoration: line-through;
 }
 
@@ -350,6 +358,12 @@ main {
 .fc-event.job-cancelled {
     background: linear-gradient(135deg, var(--error) 0%, #f87171 100%) !important;
     opacity: 0.6;
+}
+
+.job-cancelled .event-content,
+.fc-event.job-cancelled .fc-event-main-frame,
+.fc-event.job-cancelled .fc-event-title,
+.fc-event.job-cancelled .fc-list-event-title {
     text-decoration: line-through;
 }
 
@@ -1484,33 +1498,57 @@ main {
 
     /* Calendar events - less squished on mobile */
     .fc-event {
-        padding: var(--space-2) var(--space-2) !important;
-        margin: 2px 1px !important;
-        font-size: var(--font-size-sm) !important;
-        min-height: 28px !important;
+        padding: 2px 4px !important;
+        margin: 1px 1px !important;
+        font-size: 0.7rem !important;
+        min-height: 22px !important;
+        overflow: hidden !important;
     }
 
     .fc-daygrid-event {
         white-space: normal !important;
-        line-height: 1.3 !important;
+        line-height: 1.2 !important;
+        overflow: hidden !important;
     }
 
     .fc-daygrid-day-events {
         min-height: auto !important;
+        overflow: hidden !important;
     }
 
     .fc-daygrid-event-harness {
-        margin-bottom: 2px !important;
+        margin-bottom: 1px !important;
+        overflow: hidden !important;
+    }
+
+    /* Ensure events don't bleed across day boundaries */
+    .fc-daygrid-day-frame {
+        overflow: hidden !important;
+    }
+
+    /* Give day cells more room on mobile */
+    .fc .fc-daygrid-body-natural .fc-daygrid-day-events {
+        margin-bottom: 0 !important;
+    }
+
+    .fc .fc-daygrid-day {
+        min-height: 80px !important;
     }
 
     .event-title {
-        font-size: var(--font-size-sm) !important;
-        white-space: normal !important;
-        word-wrap: break-word !important;
+        font-size: 0.7rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
 
     .event-details-row {
-        font-size: 0.75rem !important;
+        font-size: 0.6rem !important;
+        overflow: hidden !important;
+    }
+
+    .event-address {
+        display: none !important;
     }
 
     .fc-list-day-cushion {
