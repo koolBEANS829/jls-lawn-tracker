@@ -184,7 +184,7 @@
 
         <!-- Job Details Modal -->
         <div id="job-details-modal" class="wizard-overlay hidden">
-            <div class="wizard-card">
+            <div class="wizard-card job-details-card">
                 <div class="wizard-header">
                     <span id="view-job-close" class="close-btn">&times;</span>
                     <h2 id="view-job-title">Job Details</h2>
@@ -194,8 +194,14 @@
                     <div class="detail-row"><strong>When:</strong> <span id="view-job-date">...</span></div>
                     <div class="detail-row"><strong>Address:</strong> <span id="view-job-address">...</span></div>
                     <div class="detail-row"><strong>Price:</strong> <span id="view-job-price">...</span></div>
-                    <div class="detail-row" id="view-job-phone-row"><strong>Phone:</strong> <span
-                            id="view-job-phone">...</span></div>
+                    <div class="detail-row" id="view-job-phone-row">
+                        <strong>Phone:</strong>
+                        <span id="view-job-phone-number" class="phone-number-text">...</span>
+                        <div id="view-job-phone-actions" class="phone-actions">
+                            <a id="btn-phone-call" class="btn-phone call" href="tel:">📞 Call</a>
+                            <a id="btn-phone-text" class="btn-phone text" href="sms:">💬 Text</a>
+                        </div>
+                    </div>
                     <div class="sms-actions">
                         <button id="btn-remind-options" type="button" class="btn-sms remind"
                             onclick="showMessageOptions('remind')">📲 Remind</button>
@@ -217,14 +223,15 @@
                         <p id="view-job-notes" class="notes-box">No notes.</p>
                     </div>
                 </div>
-                <div class="wizard-actions">
-                    <button id="btn-cancel-job" type="button" class="btn-cancel" onclick="cancelJob()">CANCEL
-                        JOB</button>
+                <div class="wizard-actions primary-actions">
+                    <button id="btn-edit-job" type="button" class="btn-edit" onclick="editJob()">✏️ EDIT</button>
                     <button id="btn-convert-quote" type="button" class="btn-convert-quote hidden"
-                        onclick="convertCalendarQuoteToJob()">MAKE INTO JOB</button>
-                    <button id="btn-edit-job" type="button" class="btn-edit" onclick="editJob()">EDIT</button>
-                    <button id="btn-mark-done" type="button" class="btn-complete" onclick="markJobAsDone()">MARK AS
+                        onclick="convertCalendarQuoteToJob()">🔄 MAKE INTO JOB</button>
+                    <button id="btn-mark-done" type="button" class="btn-complete" onclick="markJobAsDone()">✅ MARK AS
                         DONE</button>
+                </div>
+                <div class="wizard-actions-secondary">
+                    <button id="btn-cancel-job" type="button" class="btn-cancel-link" onclick="cancelJob()">Cancel this job</button>
                 </div>
             </div>
         </div>

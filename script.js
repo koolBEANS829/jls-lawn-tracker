@@ -260,25 +260,27 @@ function hideMessageOptions() {
 }
 
 /**
- * Shows a simple toast notification at the bottom of the screen
+ * Shows a toast notification at the bottom of the screen.
+ * Supports HTML content for rich previews.
  */
-function showToast(message, type = 'success') {
+function showToast(message, type = 'success', duration = 2500) {
     const toast = document.getElementById('toast');
-    toast.textContent = message;
+    toast.innerHTML = message;
     toast.className = `toast ${type}`;
 
     // Trigger animation
     setTimeout(() => toast.classList.add('show'), 10);
 
-    // Auto-hide after 2 seconds
+    // Auto-hide
     setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => toast.classList.add('hidden'), 300);
-    }, 2000);
+    }, duration);
 }
 
 /**
- * Copies the current message (remind or thanks) to clipboard
+ * Copies the current message (remind or thanks) to clipboard.
+ * Shows a preview snippet of the copied text in the toast.
  */
 async function copyCurrentMessage() {
     const event = calendar?.getEventById(currentEventId);
@@ -293,10 +295,12 @@ async function copyCurrentMessage() {
     try {
         await navigator.clipboard.writeText(msg);
         hideMessageOptions();
-        showToast('✓ Message copied!', 'success');
+        // Show a preview of what was copied
+        const preview = msg.length > 50 ? msg.substring(0, 50) + '…' : msg;
+        showToast(`<span class="toast-icon">📋</span> <strong>Copied!</strong><br><span class="toast-preview">${preview}</span>`, 'success', 3000);
     } catch (err) {
         console.error('Copy failed:', err);
-        showToast('Failed to copy', 'error');
+        showToast('<span class="toast-icon">✕</span> Failed to copy', 'error');
     }
 }
 
@@ -1629,7 +1633,11 @@ async function openEditWizard(event) {
     }
 }
 
-async function openWizard() {
+/**
+ * Opens the new job wizard.
+ * @param {Date} [prefillDate] - Optional date to pre-fill (from calendar day click)
+ */
+async function openWizard(prefillDate) {
     if (!apiAvailable && Storage.get(CONFIG.storage.jobsKey) === null) {
         await showModal('Cloud Sync not available. Data saved locally only.', 'info');
     }
@@ -1654,8 +1662,15 @@ async function openWizard() {
 
     const dateEl = document.getElementById('wizard-date');
     if (dateEl) {
-        dateEl.value = '';
-        dateEl.disabled = false; // Re-enable in case it was disabled for bulk edit
+        if (prefillDate) {
+            // Pre-fill with the clicked date at 9:00 AM
+            const d = new Date(prefillDate);
+            d.setHours(9, 0, 0, 0);
+            dateEl.value = formatLocalDateTime(d);
+        } else {
+            dateEl.value = '';
+        }
+        dateEl.disabled = false;
         dateEl.title = '';
     }
 
@@ -1748,15 +1763,24 @@ function openJobDetails(event) {
     const priceEl = document.getElementById('view-job-price');
     if (priceEl) priceEl.textContent = price ? `$${price}` : '--';
 
-    // Phone & SMS
+    // Phone & SMS — now with Call / Text pill buttons
     const phone = event.extendedProps?.phone || '';
     const phoneRow = document.getElementById('view-job-phone-row');
     const smsActions = document.querySelector('.sms-actions');
 
     if (phone) {
         if (phoneRow) phoneRow.classList.remove('hidden');
-        const phoneEl = document.getElementById('view-job-phone');
-        if (phoneEl) phoneEl.innerHTML = `<a href="sms:${phone}">${phone}</a>`;
+
+        // Show phone number text
+        const phoneNumEl = document.getElementById('view-job-phone-number');
+        if (phoneNumEl) phoneNumEl.textContent = phone;
+
+        // Set call/text button hrefs
+        const callBtn = document.getElementById('btn-phone-call');
+        const textBtn = document.getElementById('btn-phone-text');
+        if (callBtn) callBtn.href = `tel:${phone}`;
+        if (textBtn) textBtn.href = `sms:${phone}`;
+
         if (smsActions) smsActions.classList.remove('hidden');
 
         // Generate templated messages using job data
@@ -1792,7 +1816,7 @@ function openJobDetails(event) {
 
     if (status === 'cancelled') {
         if (cancelBtn) {
-            cancelBtn.textContent = 'CANCELLED ✕';
+            cancelBtn.textContent = 'Cancelled ✕';
             cancelBtn.classList.add('cancelled-state');
             cancelBtn.disabled = true;
         }
@@ -1800,7 +1824,7 @@ function openJobDetails(event) {
         if (markDoneBtn) markDoneBtn.disabled = true;
     } else {
         if (cancelBtn) {
-            cancelBtn.textContent = 'CANCEL JOB';
+            cancelBtn.textContent = 'Cancel this job';
             cancelBtn.classList.remove('cancelled-state');
             cancelBtn.disabled = false;
         }
@@ -1946,9 +1970,18 @@ function initializeCalendar() {
             },
             eventContent: renderEventContent,
             events: fetchEvents,
+            // Tap a day cell to create a new job on that date
+            dateClick: (info) => {
+                try {
+                    openWizard(info.date);
+                } catch (e) {
+                    console.error('Date click error:', e);
+                }
+            },
             eventClick: (info) => {
                 try {
                     info.jsEvent.preventDefault();
+                    info.jsEvent.stopPropagation(); // Prevent dateClick from also firing
                     if (info.event && !info.event.classNames?.includes('job-empty-day')) {
                         openJobDetails(info.event);
                     }

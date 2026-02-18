@@ -86,20 +86,20 @@ body {
 }
 
 .app-header {
-    background: linear-gradient(135deg, var(--primary-800) 0%, var(--primary-700) 100%);
+    background: linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 50%, var(--primary-800) 100%);
     color: white;
-    padding: var(--space-4) var(--space-5);
+    padding: var(--space-3) var(--space-5);
     text-align: center;
     position: sticky;
     top: 0;
     z-index: var(--z-sticky);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-lg), 0 1px 0 rgba(255, 255, 255, 0.1) inset;
 }
 
 .app-header h1 {
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-base);
     font-weight: 700;
-    letter-spacing: 0.025em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     margin: 0;
 }
@@ -113,9 +113,9 @@ main {
 #calendar {
     background: white;
     border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-xl), 0 0 0 1px var(--neutral-200);
     padding: var(--space-3);
-    border: 1px solid var(--neutral-200);
+    border: 1px solid var(--neutral-300);
 }
 
 .fc .fc-toolbar {
@@ -172,16 +172,18 @@ main {
 }
 
 .fc .fc-col-header-cell {
-    background: var(--primary-50);
+    background: linear-gradient(135deg, var(--primary-100) 0%, var(--primary-50) 100%);
     border: none !important;
     padding: var(--space-2) 0 !important;
 }
 
 .fc .fc-col-header-cell-cushion {
-    color: var(--primary-800) !important;
-    font-weight: 600 !important;
+    color: var(--primary-900) !important;
+    font-weight: 700 !important;
     font-size: var(--font-size-sm) !important;
     text-decoration: none !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
 }
 
 .fc .fc-scrollgrid {
@@ -196,7 +198,7 @@ main {
 
 .fc td,
 .fc th {
-    border-color: var(--neutral-200) !important;
+    border-color: var(--neutral-300) !important;
 }
 
 .fc .fc-daygrid-day {
@@ -213,9 +215,9 @@ main {
 }
 
 .fc .fc-daygrid-day-number {
-    color: var(--neutral-600) !important;
-    font-weight: 500 !important;
-    font-size: var(--font-size-sm) !important;
+    color: var(--neutral-700) !important;
+    font-weight: 700 !important;
+    font-size: var(--font-size-base) !important;
     text-decoration: none !important;
     padding: var(--space-1) var(--space-2) !important;
     border-radius: var(--radius-md);
@@ -228,7 +230,7 @@ main {
 }
 
 .fc .fc-day-today {
-    background: rgba(34, 197, 94, 0.08) !important;
+    background: rgba(34, 197, 94, 0.1) !important;
 }
 
 .fc .fc-day-today .fc-daygrid-day-number {
@@ -236,23 +238,46 @@ main {
     color: white !important;
     font-weight: 700 !important;
     border-radius: var(--radius-full);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2), var(--shadow-sm);
+    min-width: 30px;
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fc .fc-day-other {
+    background: var(--neutral-50) !important;
 }
 
 .fc .fc-day-other .fc-daygrid-day-number {
-    color: var(--neutral-400) !important;
+    color: var(--neutral-300) !important;
+    font-weight: 400 !important;
 }
 
 .fc-event {
     border: none !important;
+    border-left: 3px solid transparent !important;
     border-radius: var(--radius-md) !important;
     padding: var(--space-1) var(--space-2) !important;
-    margin: 1px 2px !important;
+    margin: 2px 3px !important;
     font-size: var(--font-size-xs) !important;
     font-weight: 500 !important;
     cursor: pointer !important;
     transition: all var(--transition-fast) !important;
     box-shadow: var(--shadow-xs);
+}
+
+.fc-event.job-mowing {
+    border-left-color: var(--primary-800) !important;
+}
+
+.fc-event.job-hedge {
+    border-left-color: #0e7490 !important;
+}
+
+.fc-event.job-quote {
+    border-left-color: #b45309 !important;
 }
 
 .fc-event:hover {
@@ -429,16 +454,31 @@ main {
     display: flex;
     align-items: center;
     justify-content: center;
+    animation: fabPulse 2s ease-in-out 1s 3;
+}
+
+@keyframes fabPulse {
+
+    0%,
+    100% {
+        box-shadow: var(--shadow-xl), 0 0 0 4px rgba(34, 197, 94, 0.15);
+    }
+
+    50% {
+        box-shadow: var(--shadow-xl), 0 0 0 10px rgba(34, 197, 94, 0.08);
+    }
 }
 
 .fab-btn:hover {
     transform: scale(1.08);
     box-shadow: var(--shadow-2xl), 0 0 0 6px rgba(34, 197, 94, 0.2);
     background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-500) 100%);
+    animation: none;
 }
 
 .fab-btn:active {
     transform: scale(0.95);
+    animation: none;
 }
 
 .wizard-overlay {
@@ -478,9 +518,22 @@ main {
     width: 100%;
     max-width: 420px;
     overflow: hidden;
-    animation: slideUp var(--transition-smooth) ease-out;
+    animation: cardEnter var(--transition-smooth) cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+@keyframes cardEnter {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Alias for backward compat */
 @keyframes slideUp {
     from {
         opacity: 0;
@@ -625,32 +678,35 @@ main {
     padding: var(--space-4) var(--space-3);
     border: 2px solid var(--neutral-200);
     border-radius: var(--radius-xl);
-    background: var(--neutral-50);
+    background: white;
     font-size: var(--font-size-sm);
     font-weight: 600;
     color: var(--neutral-600);
     cursor: pointer;
     transition: all var(--transition-fast);
+    box-shadow: var(--shadow-xs);
 }
 
 .btn-big-type:hover {
     border-color: var(--primary-300);
     background: var(--primary-50);
     color: var(--primary-700);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
 }
 
 .btn-big-type.mowing.selected {
     border-color: var(--primary-500);
     background: linear-gradient(135deg, var(--primary-100) 0%, var(--primary-50) 100%);
     color: var(--primary-700);
-    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15), var(--shadow-sm);
 }
 
 .btn-big-type.hedge.selected {
     border-color: #06b6d4;
     background: linear-gradient(135deg, #cffafe 0%, #ecfeff 100%);
     color: #0891b2;
-    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.15);
+    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.15), var(--shadow-sm);
 }
 
 .btn-big-type.quote {
@@ -663,7 +719,7 @@ main {
     border-color: #f59e0b;
     background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%);
     color: #d97706;
-    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.15);
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.15), var(--shadow-sm);
 }
 
 .checkbox-label {
@@ -844,6 +900,45 @@ main {
     color: white;
 }
 
+/* Demoted cancel link in job details */
+.btn-cancel-link {
+    background: none;
+    border: none;
+    color: var(--neutral-500);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    padding: var(--space-2) var(--space-4);
+    transition: color var(--transition-fast);
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 2px;
+}
+
+.btn-cancel-link:hover {
+    color: var(--error);
+    text-decoration-color: var(--error);
+}
+
+.btn-cancel-link.cancelled-state {
+    color: var(--error);
+    opacity: 0.6;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+
+/* Secondary action row below primary buttons */
+.wizard-actions-secondary {
+    display: flex;
+    justify-content: center;
+    padding: 0 var(--space-5) var(--space-4);
+}
+
+/* Primary action row overrides for job details */
+.wizard-actions.primary-actions {
+    gap: var(--space-3);
+}
+
 .btn-convert-quote {
     flex: 1;
     padding: var(--space-3) var(--space-4);
@@ -922,7 +1017,7 @@ main {
     border-bottom: 1px solid var(--neutral-100);
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: 2px;
 }
 
 .detail-row:last-child {
@@ -930,16 +1025,17 @@ main {
 }
 
 .detail-row strong {
-    font-size: var(--font-size-xs);
+    font-size: 0.65rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--neutral-500);
+    letter-spacing: 0.08em;
+    color: var(--neutral-400);
+    font-weight: 700;
 }
 
 .detail-row span {
     font-size: var(--font-size-base);
     color: var(--neutral-800);
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .notes-box {
@@ -953,6 +1049,53 @@ main {
     font-style: italic;
 }
 
+/* Phone Call / Text action pills */
+.phone-number-text {
+    font-weight: 600;
+    margin-bottom: var(--space-1);
+}
+
+.phone-actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
+.btn-phone {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-xs);
+}
+
+.btn-phone.call {
+    background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-500) 100%);
+    color: white;
+}
+
+.btn-phone.call:hover {
+    background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-400) 100%);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+}
+
+.btn-phone.text {
+    background: linear-gradient(135deg, var(--info) 0%, #60a5fa 100%);
+    color: white;
+}
+
+.btn-phone.text:hover {
+    background: linear-gradient(135deg, #2563eb 0%, var(--info) 100%);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+}
+
 .sms-actions {
     display: flex;
     gap: var(--space-3);
@@ -961,31 +1104,38 @@ main {
 
 .btn-sms {
     flex: 1;
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-3);
     text-align: center;
     text-decoration: none;
-    border-radius: var(--radius-md);
+    border: none;
+    border-radius: var(--radius-lg);
     font-size: var(--font-size-sm);
     font-weight: 600;
     transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
 }
 
 .btn-sms.remind {
-    background: var(--info);
+    background: linear-gradient(135deg, var(--info) 0%, #60a5fa 100%);
     color: white;
 }
 
 .btn-sms.remind:hover {
-    background: #2563eb;
+    background: linear-gradient(135deg, #2563eb 0%, var(--info) 100%);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
 }
 
 .btn-sms.thanks {
-    background: var(--warning);
+    background: linear-gradient(135deg, var(--warning) 0%, #fbbf24 100%);
     color: white;
 }
 
 .btn-sms.thanks:hover {
-    background: #d97706;
+    background: linear-gradient(135deg, #d97706 0%, var(--warning) 100%);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
 }
 
 .btn-sms.copy {
@@ -1415,23 +1565,28 @@ main {
     }
 }
 
-/* Toast Notification */
+/* Toast Notification — glass pill design */
 .toast {
     position: fixed;
     bottom: 100px;
     left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    background: var(--primary-700);
+    transform: translateX(-50%) translateY(30px);
+    background: rgba(20, 83, 45, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     color: white;
     padding: var(--space-3) var(--space-5);
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-xl);
     font-size: var(--font-size-sm);
     font-weight: 600;
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-xl), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
     z-index: 9999;
     opacity: 0;
-    transition: all 0.3s ease;
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     pointer-events: none;
+    max-width: 360px;
+    text-align: center;
+    line-height: 1.5;
 }
 
 .toast.show {
@@ -1444,11 +1599,36 @@ main {
 }
 
 .toast.success {
-    background: var(--primary-600);
+    background: rgba(20, 83, 45, 0.92);
+    border-left: 3px solid var(--primary-400);
 }
 
 .toast.error {
-    background: var(--error);
+    background: rgba(127, 29, 29, 0.92);
+    border-left: 3px solid #fca5a5;
+}
+
+.toast.info {
+    background: rgba(30, 58, 138, 0.92);
+    border-left: 3px solid #93c5fd;
+}
+
+.toast-icon {
+    font-size: 1.1em;
+    margin-right: var(--space-1);
+}
+
+.toast-preview {
+    display: block;
+    font-size: var(--font-size-xs);
+    font-weight: 400;
+    opacity: 0.85;
+    margin-top: 2px;
+    font-style: italic;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* ============================================================ */
