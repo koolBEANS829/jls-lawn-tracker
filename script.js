@@ -1597,30 +1597,42 @@ async function openEditWizard(event) {
         // Use the centralized function to ensure UI consistency (hiding price/recurring for quotes)
         selectJobType(selectedJobType);
 
-        // Hide recurring checkbox for recurring job edits (they already selected scope)
-        // Show but disable for non-recurring edits
+        // Show recurring option for all job edits (except quotes)
         const recurringContainer = document.getElementById('recurring-checkbox-container');
         const recurringCheckbox = document.getElementById('wizard-recurring');
         const recurringOptions = document.getElementById('recurring-options');
 
-        if (currentRecurringId) {
-            // Editing a recurring job - hide the checkbox entirely
+        if (selectedJobType === 'quote') {
+            // Quotes don't support recurring
             if (recurringContainer) recurringContainer.classList.add('hidden');
+            if (recurringOptions) recurringOptions.classList.add('hidden');
         } else {
-            // Editing a non-recurring job - allow converting to recurring ONLY if not a Quote
-            if (selectedJobType === 'quote') {
-                if (recurringContainer) recurringContainer.classList.add('hidden');
-            } else {
-                if (recurringContainer) recurringContainer.classList.remove('hidden');
-            }
+            // Show recurring checkbox for all job types
+            if (recurringContainer) recurringContainer.classList.remove('hidden');
+
+            const isRecurring = event.extendedProps?.is_recurring;
 
             if (recurringCheckbox) {
-                recurringCheckbox.checked = false;
-                recurringCheckbox.disabled = false; // Allow enabling recurring
+                recurringCheckbox.checked = !!isRecurring;
+                recurringCheckbox.disabled = false;
+            }
+
+            if (isRecurring && recurringOptions) {
+                // Pre-fill with existing recurrence pattern
+                recurringOptions.classList.remove('hidden');
+                try {
+                    const pattern = JSON.parse(event.extendedProps?.recurrence_pattern || '{}');
+                    const freqEl = document.getElementById('wizard-frequency');
+                    const occEl = document.getElementById('wizard-occurrences');
+                    if (freqEl && pattern.frequency) freqEl.value = pattern.frequency;
+                    if (occEl) occEl.value = pattern.occurrences || 4; // default
+                } catch (e) {
+                    console.warn('Could not parse recurrence pattern:', e);
+                }
+            } else if (recurringOptions) {
+                recurringOptions.classList.add('hidden');
             }
         }
-
-        if (recurringOptions) recurringOptions.classList.add('hidden');
 
         closeJobDetails();
 

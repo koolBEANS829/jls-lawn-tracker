@@ -255,6 +255,18 @@ main {
     font-weight: 400 !important;
 }
 
+/* Gray out events in other-month day cells */
+.fc .fc-day-other .fc-event,
+.fc .fc-day-other .fc-daygrid-event {
+    filter: saturate(0) !important;
+    opacity: 0.4 !important;
+}
+
+.fc .fc-day-other .fc-event:hover {
+    opacity: 0.6 !important;
+    filter: saturate(0.3) !important;
+}
+
 .fc-event {
     border: none !important;
     border-left: 3px solid transparent !important;
